@@ -175,3 +175,4 @@ cython_debug/
 
 # Parapy license
 parapy.lic
+.parapy.lic.lock
