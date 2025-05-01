@@ -4,5 +4,3 @@ from parapy.gui import display
 
 obj = Box(1, 2, 3)
 display(obj)
-
-nog meer testen
