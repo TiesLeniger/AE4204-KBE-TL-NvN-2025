@@ -42,6 +42,3 @@ class Glider(GeomBase):
     # Tail parameters
     hor_tail_airfoil_id: float = Input()        # TODO: add validator                       # Horizontal tail airfoil profile
     ver_tail_airfoil_id: float = Input()        # TODO: add validator                       # Vertical tail airfoil profile
-     
-
-
