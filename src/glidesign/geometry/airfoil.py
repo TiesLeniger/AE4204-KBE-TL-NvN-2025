@@ -11,3 +11,5 @@ from kbeutils.data import airfoils
 
 class Airfoil(FittedCurve):
 
+    airfoil_name: str = Input
+    chord: float = Input(1.0)
