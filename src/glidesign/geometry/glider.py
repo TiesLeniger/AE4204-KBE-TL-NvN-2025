@@ -123,4 +123,3 @@ class Glider(GeomBase):
             span = self.winglet_length
             #TODO: add other winglet parameters
         )
-
