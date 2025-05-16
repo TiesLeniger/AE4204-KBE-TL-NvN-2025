@@ -47,7 +47,18 @@ class Glider(GeomBase):
 
     @Atribute
     def wingspan(self):
-
+        #Define the wingspan based on FAI class limitations:
+        if fai_class == "std":
+            wingspan = 15 #meters
+        elif fai_class == "15":
+            wingspan = 15 #metres
+        elif fai_class == "18":
+            wingspan = 18 #metres
+        elif fai_class == "20":
+            wingspan = 20 #metres
+        elif fai_class == "open":
+            wingspan = Input(25) #Open class has no wingspan limitation, user can define it (default = 25m)
+        return self.wingspan
 
 
 
@@ -60,6 +71,7 @@ class Glider(GeomBase):
     def right_wing(self):
         return lifting_surface(
             airfoil_id = self.airfoil_id,
+            winspan = self.wingspan,
             twist = self.twist,
             dihedral = self.dihedral,
             sweep = self.sweep,
