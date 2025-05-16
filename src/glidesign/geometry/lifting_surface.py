@@ -40,4 +40,3 @@ class LiftingSurface(GeomBase):
     @Attribute
     def aspect_ratio(self):
         return
-

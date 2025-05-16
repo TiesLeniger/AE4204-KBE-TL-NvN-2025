@@ -9,6 +9,8 @@ from parapy.core import Input, Attribute, Part
 from parapy.core.validate import OneOf, Range
 from unicodedata import mirrored
 
+# Custom imports
+from .lifting_surface import LiftingSurface
 
 class Glider(GeomBase):
 
@@ -45,31 +47,28 @@ class Glider(GeomBase):
     hor_tail_airfoil_id: float = Input()        # TODO: add validator                       # Horizontal tail airfoil profile
     ver_tail_airfoil_id: float = Input()        # TODO: add validator                       # Vertical tail airfoil profile
 
-    @Atribute
+    @Attribute
     def wingspan(self):
         #Define the wingspan based on FAI class limitations:
-        if fai_class == "std":
+        if self.fai_class == "std":
             wingspan = 15 #meters
-        elif fai_class == "15":
+        elif self.fai_class == "15":
             wingspan = 15 #metres
-        elif fai_class == "18":
+        elif self.fai_class == "18":
             wingspan = 18 #metres
-        elif fai_class == "20":
+        elif self.fai_class == "20":
             wingspan = 20 #metres
-        elif fai_class == "open":
+        elif self.fai_class == "open":
             wingspan = Input(25) #Open class has no wingspan limitation, user can define it (default = 25m)
         return self.wingspan
-
-
 
     @Attribute
     def wing_position(self):
         return
 
-
     @Part
     def right_wing(self):
-        return lifting_surface(
+        return LiftingSurface(
             airfoil_id = self.airfoil_id,
             winspan = self.wingspan,
             twist = self.twist,
@@ -85,7 +84,7 @@ class Glider(GeomBase):
             shape_in=self.right_wing,
             reference_point=self.position,
             vector1=self.position.Vz,
-            vector2=self.position.Vx,
+            vector2=self.position.Vx
             #mesh_deflection=self.mesh_deflection
         )
 
@@ -95,9 +94,9 @@ class Glider(GeomBase):
 
     @Part
     def hor_tail(self):
-        return lifting_surface(
+        return LiftingSurface(
             airfoil_id = self.hor_tail_airfoil_id,
-            position = self.hor_tail_position,
+            position = self.hor_tail_position
             #TODO: add a certain default for planform parameters such that they can later be deternined in the analyses based on wing size
         )
 
@@ -107,9 +106,9 @@ class Glider(GeomBase):
 
     @Part
     def vert_tail(self):
-        return lifting_surface(
+        return LiftingSurface(
             airfoil_id = self.vert_tail_airfoil_id,
-            position = self.vert_tail_position,
+            position = self.vert_tail_position
             # TODO: add a certain default for planform parameters such that they can later be deternined in the analyses based on wing size
         )
 
@@ -119,9 +118,9 @@ class Glider(GeomBase):
 
     @Part
     def winglet(self):
-        return lifting_surface(
-            position = self.winglet_position
-            span = self.winglet_length,
+        return LiftingSurface(
+            position = self.winglet_position,
+            span = self.winglet_length
             #TODO: add other winglet parameters
-            )
+        )
 
