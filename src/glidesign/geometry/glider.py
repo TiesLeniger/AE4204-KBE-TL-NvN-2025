@@ -7,6 +7,8 @@ import numpy as np
 from parapy.geom import GeomBase, translate, rotate, MirroredShape
 from parapy.core import Input, Attribute, Part
 from parapy.core.validate import OneOf, Range
+from unicodedata import mirrored
+
 
 class Glider(GeomBase):
 
@@ -42,3 +44,72 @@ class Glider(GeomBase):
     # Tail parameters
     hor_tail_airfoil_id: float = Input()        # TODO: add validator                       # Horizontal tail airfoil profile
     ver_tail_airfoil_id: float = Input()        # TODO: add validator                       # Vertical tail airfoil profile
+
+    @Atribute
+    def wingspan(self):
+
+
+
+
+    @Attribute
+    def wing_position(self):
+        return
+
+
+    @Part
+    def right_wing(self):
+        return lifting_surface(
+            airfoil_id = self.airfoil_id,
+            twist = self.twist,
+            dihedral = self.dihedral,
+            sweep = self.sweep,
+            taper=self.taper,
+            flap_type = self.flap_type
+        )
+
+    @Part
+    def left_wing(self):
+        return MirroredShape(
+            shape_in=self.right_wing,
+            reference_point=self.position,
+            vector1=self.position.Vz,
+            vector2=self.position.Vx,
+            #mesh_deflection=self.mesh_deflection
+        )
+
+    @Attribute
+    def hor_tail_position(self):
+        return
+
+    @Part
+    def hor_tail(self):
+        return lifting_surface(
+            airfoil_id = self.hor_tail_airfoil_id,
+            position = self.hor_tail_position,
+            #TODO: add a certain default for planform parameters such that they can later be deternined in the analyses based on wing size
+        )
+
+    @Attribute
+    def ver_tail_position(self):
+        return
+
+    @Part
+    def vert_tail(self):
+        return lifting_surface(
+            airfoil_id = self.vert_tail_airfoil_id,
+            position = self.vert_tail_position,
+            # TODO: add a certain default for planform parameters such that they can later be deternined in the analyses based on wing size
+        )
+
+    @Attribute
+    def winglet_position(self):
+        return
+
+    @Part
+    def winglet(self):
+        return lifting_surface(
+            position = self.winglet_position
+            span = self.winglet_length,
+            #TODO: add other winglet parameters
+            )
+
