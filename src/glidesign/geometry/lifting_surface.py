@@ -8,7 +8,8 @@ from parapy.geom import GeomBase, translate, rotate, MirroredShape
 from parapy.core import Input, Attribute, Part
 from parapy.core.validate import OneOf, Range
 
-class LiftingSurface(Geombase)
+class LiftingSurface(GeomBase):
+    
     name: str = Input()
 
     airfoil_id: float = input()
