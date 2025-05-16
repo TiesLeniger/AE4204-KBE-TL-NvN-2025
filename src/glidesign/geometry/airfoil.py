@@ -17,7 +17,6 @@ class Airfoil(FittedCurve):
 
     airfoil_name: str = Input("nlf1-0015", validator = airfoil_found)
     chord: float = Input(1.0)
-    thickness_ratio: float = Input(0.15, validator = Range(0.08, 0.2))
     cst_poly_order: int = Input(4)
 
     @Attribute
