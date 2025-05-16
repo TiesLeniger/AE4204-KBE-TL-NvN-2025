@@ -9,6 +9,9 @@ from parapy.core import Attribute, Part, Input
 from parapy.core.validate import OneOf, Range
 from kbeutils.data import airfoils
 
+# Self-built imports
+from ..core import airfoil_found
+
 class Airfoil(FittedCurve):
 
     airfoil_name: str = Input
