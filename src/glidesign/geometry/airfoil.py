@@ -10,7 +10,8 @@ from parapy.core.validate import OneOf, Range
 from kbeutils.data import airfoils
 
 # Self-built imports
-from ..core import airfoil_found
+from ..core import airfoil_found, Frame
+from .cst_curves import fit_cst_airfoil
 
 class Airfoil(FittedCurve):
 
@@ -47,6 +48,28 @@ class Airfoil(FittedCurve):
         points_list = [self.position.translate("x", x * self.chord,
                                                "z", z * self.chord).location
                         for x, z in zip(self.coords[0], self.coords[1])]
-        return points_list 
+        return points_list
     
+    @Attribute
+    def cst_coefficients(self):
+        return fit_cst_airfoil(self.x, self.z, self.cst_poly_order)
 
+    @Attribute
+    def cst_coeff_u(self):
+        return self.cst_coefficients[0]
+    
+    @Attribute
+    def cst_coeff_l(self):
+        return self.cst_coefficients[1]
+    
+    @Attribute
+    def z_te_u(self):
+        return self.cst_coefficients[2]
+    
+    @Attribute
+    def z_te_l(self):
+        return self.cst_coefficients[3]
+    
+    @Part
+    def frame(self):
+        return Frame(pos = self.position, hidden = False)
