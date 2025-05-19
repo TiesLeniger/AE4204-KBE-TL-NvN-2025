@@ -11,6 +11,7 @@ from unicodedata import mirrored
 
 # Custom imports
 from .lifting_surface import LiftingSurface
+from .fuselage import GliderFuselage
 
 class Glider(GeomBase):
 
@@ -46,6 +47,10 @@ class Glider(GeomBase):
     # Tail parameters
     hor_tail_airfoil_id: float = Input()        # TODO: add validator                       # Horizontal tail airfoil profile
     ver_tail_airfoil_id: float = Input()        # TODO: add validator                       # Vertical tail airfoil profile
+
+    # Fuselage parameters
+    fuselage_length: float = Input(7, validator = Range(4.0, 12.0))
+    fuselage_max_diameter: float = Input(0.8, validator = Range(0.3, 1.5))
 
     @Attribute
     def wingspan(self):
@@ -122,4 +127,16 @@ class Glider(GeomBase):
             position = self.winglet_position,
             span = self.winglet_length
             #TODO: add other winglet parameters
+        )
+
+    @Attribute
+    def fuselage_position(self):
+        return
+
+    @Part
+    def fuselage(self):
+        return GliderFuselage(
+            position = self.fuselage_position,
+            length = self.fuselage_length,
+            max_diameter = self.fuselage_max_diameter,
         )

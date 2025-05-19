@@ -44,13 +44,13 @@ class LiftingSurface(GeomBase):
     
     name: str = Input()
 
-    airfoil_id: float = input()
-    span: float = input()
-    twist: float = input()
-    dihedral: float = input()
-    sweep: float  = input()
-    taper: float = input()
-    flap_type: str = input()
+    airfoil_id: float = Input()
+    span: float = Input()
+    twist: float = Input()
+    dihedral: float = Input()
+    sweep: float  = Input()
+    taper: float = Input()
+    flap_type: str = Input()
 
     root_airfoil_id: float = Input()
     tip_airfoil_id: float = Input()
