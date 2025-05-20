@@ -1,2 +1,3 @@
 from validator import airfoil_found
 from cst_curves import fit_cst_airfoil
+from naca_profiles import generate_naca4
