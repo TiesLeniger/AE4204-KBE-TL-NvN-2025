@@ -10,8 +10,9 @@ from parapy.core.validate import OneOf, Range
 from kbeutils.data import airfoils
 
 # Self-built imports
-from ..core import airfoil_found, Frame
-from .cst_curves import fit_cst_airfoil
+from ..core import airfoil_found
+from ..core.cst_curves import fit_cst_airfoil
+from .ref_frame import Frame
 
 class Airfoil(FittedCurve):
 

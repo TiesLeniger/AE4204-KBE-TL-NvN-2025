@@ -1,2 +1,2 @@
 from validator import airfoil_found
-from ref_frame import Frame
+from cst_curves import fit_cst_airfoil
