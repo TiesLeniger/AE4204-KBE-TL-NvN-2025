@@ -7,14 +7,17 @@ import numpy as np
 # ParaPy imports
 from parapy.geom import GeomBase, translate, rotate, MirroredShape, LoftedSolid, Position
 from parapy.core import Input, Attribute, Part
-from parapy.core.validate import OneOf, Range, GreaterThan
+from parapy.core.validate import OneOf, Range, GreaterThan, Validator
 
 # Custom imports
-from ..core import airfoil_found
+from ..core import airfoil_found, validate_equal_length_lists
 from .airfoil import Airfoil
 from .ref_frame import Frame
 
 class LiftingSection(LoftedSolid):
+
+    position: Optional[Position] = Input(Position(0.0, 0.0, 0.0))
+    orientation: Optional[tuple[float, float, float]] = Input((0.0, 0.0, 0.0))
 
     root_airfoil_id: str = Input(validator = airfoil_found)             # Inner airfoil name
     tip_airfoil_id: str = Input(validator = airfoil_found)              # Outer airfoil name
@@ -27,7 +30,6 @@ class LiftingSection(LoftedSolid):
     dihedral: float = Input(0.0, validator = Range(-3.0, 5.0))          # Section dihedral [deg]
     sweep: float = Input(0.0, validator = Range(-10.0, 20.0))           # Section sweep [deg]
     sweep_loc: float = Input(0.25, validator = Range(0.0, 1.0))         # Chord normalized sweep location of the section (0 is LE, 1 is TE)
-    incidence: float = Input(0.0, validator = Range(-5.0, 5.0))         # Incidence angle of the entire section
     
     control_surface: str = Input("None", OneOf(                         # Control surface on the section
         "None", "Aileron", "Flaperon", "Flap", "Airbrake"))
@@ -43,21 +45,31 @@ class LiftingSection(LoftedSolid):
     @Attribute
     def root_position(self):
         if self.previous_section is None:
-            return Position(0, 0, 0)
+            return self.position
         else:
             return self.previous_section.tip_position
+        
+    @Attribute
+    def root_orientation(self):
+        if self.previous_section is None:
+            return self.orientation
+        else:
+            return self.previous_section.tip_orientation
     
     @Attribute
     def tip_position(self):
-        rotated_pos = rotate(self.root_airfoil.position, "y", self.twist, deg = True)
-
         sweep_x = self.span * np.tan(np.deg2rad(self.sweep)) + (self.root_chord - self.tip_chord) * self.sweep_loc
 
-        translated_pos = translate(rotated_pos,
+        translated_pos = translate(self.root_airfoil.position,
                                    "x", sweep_x,
                                    "y", self.span,
                                    "z", self.span * np.tan(np.deg2rad(self.dihedral)))
         return translated_pos
+    
+    @Attribute
+    def tip_orientation(self):
+        rotated_pos = rotate(self.root_airfoil.root_orientation, "y", self.twist)
+        return rotated_pos
 
     @Attribute
     def tip_chord(self):
@@ -67,44 +79,57 @@ class LiftingSection(LoftedSolid):
     def root_airfoil(self):
         return Airfoil(airfoil_name = self.root_airfoil_id,
                        chord = self.root_chord,
-                       position = rotate(self.position, 'y', self.incidence, deg=True)
+                       position = self.root_position,
+                       orientation = self.root_orientation
                        )
     
     @Part
     def tip_airfoil(self):
         return Airfoil(airfoil_name = self.tip_airfoil_id,
                        chord = self.tip_chord,
-                       position = self.tip_position)
+                       position = self.tip_position,
+                       orientation = self.tip_orientation)
 
-class LiftingSurface(GeomBase):
-    
+class LiftingSurface(LoftedSolid):
+    # Global parameters
     name: str = Input()
+    position: Position = Input(Position(0.0, 0.0, 0.0))
+    orientation: tuple[float, float, float] = Input((0.0, 0.0, 0.0))
 
-    airfoil_id: float = Input()
-    span: float = Input()
-    twist: float = Input()
-    dihedral: float = Input()
-    sweep: float  = Input()
-    taper: float = Input()
-    flap_type: str = Input()
+    # Section inputs
+    root_airfoil_ids: list[str] = Input(["nlf1-0015.dat"])
+    tip_airfoil_ids: list[str] = Input(["nlf1-0015.dat"])
+    sec_spans: list[float] = Input([7.3])                               # [m]
+    sec_twists: list[float] = Input([0.0])                              # [deg]    
+    sec_dihedrals: list[float] = Input([0.0])                           # [deg]
+    sec_sweeps: list[float] = Input([0.0])                              # [deg]
+    sec_sweeplocs: list[float] = Input([0.25])                          # [-]
+    sec_tapers: list[float] = Input([0.7])                              # [-]
+    
+    mesh_deflection: float = Input(1e-4)
 
-    root_airfoil_id: float = Input()
-    tip_airfoil_id: float = Input()
+    @Validator
+    def validate_section_input_lengths(self):
+        validate_equal_length_lists(self, [
+            "root_airfoil_ids",
+            "tip_airfoil_ids",
+            "sec_spans",
+            "sec_twists",
+            "sec_dihedrals",
+            "sec_sweeps",
+            "sec_sweeplocs",
+            "sec_tapers"
+        ])
 
-    @Attribute
-    def root_position(self):
-        #....
-        return np.array([0, 0, 0])
-
-    @Attribute
-    def tip_position(self):
-        #.....
-        return np.array([0, 0, 0])
-
-    @Attribute
-    def wing_area(self):
-        return
-
-    @Attribute
-    def aspect_ratio(self):
-        return
+    @Part
+    def sections(self):
+        previous = None
+        sections = []
+        n = len(self.root_airfoil_ids)
+        for i in range(n):
+            if i == 0:
+                root_position = self.position
+                root_orientation = self.orientation
+            else:
+                root_position = None
+                root_orientation = None
