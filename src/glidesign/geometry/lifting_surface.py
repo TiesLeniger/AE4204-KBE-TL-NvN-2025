@@ -45,31 +45,25 @@ class LiftingSection(LoftedSolid):
     @Attribute
     def root_position(self):
         if self.previous_section is None:
-            return self.position
+            return rotate(self.position,
+                          "x", self.orientation[0],
+                          "y", self.orientation[1],
+                          "z", self.orientation[2],
+                          deg = True
+                        )
         else:
             return self.previous_section.tip_position
-        
-    @Attribute
-    def root_orientation(self):
-        if self.previous_section is None:
-            return self.orientation
-        else:
-            return self.previous_section.tip_orientation
     
     @Attribute
     def tip_position(self):
+        rotated_pos = rotate(self.root_airfoil.position, "y", self.twist, deg = True)
         sweep_x = self.span * np.tan(np.deg2rad(self.sweep)) + (self.root_chord - self.tip_chord) * self.sweep_loc
-
-        translated_pos = translate(self.root_airfoil.position,
+        translated_pos = translate(rotated_pos,
                                    "x", sweep_x,
                                    "y", self.span,
                                    "z", self.span * np.tan(np.deg2rad(self.dihedral)))
+        
         return translated_pos
-    
-    @Attribute
-    def tip_orientation(self):
-        rotated_pos = rotate(self.root_airfoil.root_orientation, "y", self.twist)
-        return rotated_pos
 
     @Attribute
     def tip_chord(self):
@@ -80,7 +74,6 @@ class LiftingSection(LoftedSolid):
         return Airfoil(airfoil_name = self.root_airfoil_id,
                        chord = self.root_chord,
                        position = self.root_position,
-                       orientation = self.root_orientation
                        )
     
     @Part
@@ -88,7 +81,7 @@ class LiftingSection(LoftedSolid):
         return Airfoil(airfoil_name = self.tip_airfoil_id,
                        chord = self.tip_chord,
                        position = self.tip_position,
-                       orientation = self.tip_orientation)
+                       )
 
 class LiftingSurface(LoftedSolid):
     # Global parameters
@@ -129,7 +122,8 @@ class LiftingSurface(LoftedSolid):
         for i in range(n):
             if i == 0:
                 root_position = self.position
-                root_orientation = self.orientation
             else:
                 root_position = None
-                root_orientation = None
+            section = LiftingSection(
+                
+            )
