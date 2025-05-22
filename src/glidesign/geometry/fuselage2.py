@@ -94,6 +94,7 @@ class GliderFuselage(GeomBase):
 
         num_points = int(self.L * 10) #10 points per meter (1 each 10 cm)
         dx_hat = 1.0 / (num_points - 1)
+
         pts = [Point(x=x_hat * self.L,
                      y=0,
                      z=get_r(x_hat) * self.D / 2)

@@ -32,8 +32,9 @@ class Glider(GeomBase):
     sweep: float = Input(0.0, validator = Range(-5.0, 5.0))                                 # Quarter chord sweep angle [deg]
     taper: float = Input(0.5, validator = Range(0.1, 1.0))                                  # Taper ratio
     flap_type: str = Input("No flaps", validator = OneOf([
-        "No flaps", "Flaperon", "Discrete flap"
-    ]))
+        "No flaps", "Flaperon", "Discrete flap"]))
+    wing_pos_long: float = Input(0.4, validator = Range(0, 1))                          #Longitudinal wing position as fraction fuselage length
+    wing_pos_vert: float = Input(0.5, validator = Range(0, 1))                          #Vertical wing position as fraction max fus radius
 
     # Winglet parameters
     winglet_length: float = Input(0.0, validator = Range(0.0, 1.0))                         # Winglet length in [m]
@@ -46,11 +47,16 @@ class Glider(GeomBase):
 
     # Tail parameters
     hor_tail_airfoil_id: float = Input()        # TODO: add validator                       # Horizontal tail airfoil profile
+    hor_tail_pos_long: float = Input(1, validator = Range(0.5, 1.3))             #Horizontal tail position as fraction of fuselage length
+
     ver_tail_airfoil_id: float = Input()        # TODO: add validator                       # Vertical tail airfoil profile
+    ver_tail_pos_long: float = Input(1, validator=Range(0.5,1.3))                #Vertical tail position as fraction of fuselage length
+    ver_tail_height: float = Input(1.4, validator= Range(0.2, 2))                #Height of vertical tailplane in meters
 
     # Fuselage parameters
     fuselage_length: float = Input(7, validator = Range(4.0, 12.0))
     fuselage_max_diameter: float = Input(0.8, validator = Range(0.3, 1.5))
+    fuselage_max_radius = fuselage_max_diameter / 2.0
 
     @Attribute
     def wingspan(self):
@@ -69,7 +75,9 @@ class Glider(GeomBase):
 
     @Attribute
     def wing_position(self):
-        return
+        return translate(self.position,
+                        'x', self.wing_pos_long * self.fuselage_length,
+                         'z', self.wing_pos_vert * self.fuselage_max_radius)
 
     @Part
     def right_wing(self):
@@ -80,22 +88,25 @@ class Glider(GeomBase):
             dihedral = self.dihedral,
             sweep = self.sweep,
             taper=self.taper,
-            flap_type = self.flap_type
+            flap_type = self.flap_type,
+            position = self.wing_position
         )
 
     @Part
     def left_wing(self):
         return MirroredShape(
-            shape_in=self.right_wing,
-            reference_point=self.position,
-            vector1=self.position.Vz,
-            vector2=self.position.Vx
+            shape_in = self.right_wing,
+            reference_point = self.wing_position,
+            vector1 = self.position.Vz,
+            vector2 = self.position.Vx
             #mesh_deflection=self.mesh_deflection
         )
 
     @Attribute
     def hor_tail_position(self):
-        return
+        return translate(self.position,
+                         'x', self.hor_tail_pos_long * self.fuselage_length,
+                         'z', self.ver_tail_height)
 
     @Part
     def hor_tail(self):
@@ -107,7 +118,9 @@ class Glider(GeomBase):
 
     @Attribute
     def ver_tail_position(self):
-        return
+        return rotate(translate(self.position,
+                                'x', self.ver_tail_pos_long * self.fuselage_length,),
+                      'x', np.radians(90))
 
     @Part
     def vert_tail(self):
@@ -117,10 +130,6 @@ class Glider(GeomBase):
             # TODO: add a certain default for planform parameters such that they can later be deternined in the analyses based on wing size
         )
 
-    @Attribute
-    def winglet_position(self):
-        return
-
     @Part
     def winglet(self):
         return LiftingSurface(
@@ -129,14 +138,15 @@ class Glider(GeomBase):
             #TODO: add other winglet parameters
         )
 
-    @Attribute
-    def fuselage_position(self):
-        return
-
     @Part
     def fuselage(self):
         return GliderFuselage(
-            position = self.fuselage_position,
+            position = self.position, #Starts at origin
             length = self.fuselage_length,
             max_diameter = self.fuselage_max_diameter,
         )
+
+if __name__ == '__main__':
+    from parapy.gui import display
+    glider = Glider(name="glider")
+    display(glider)

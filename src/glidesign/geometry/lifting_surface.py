@@ -16,7 +16,7 @@ from .ref_frame import Frame
 
 class LiftingSection(LoftedSolid):
 
-    position: Optional[Position] = Input(Position(0.0, 0.0, 0.0))
+    #position: Optional[Position] = Input(Position(0.0, 0.0, 0.0))
     orientation: Optional[tuple[float, float, float]] = Input((0.0, 0.0, 0.0))
 
     root_airfoil_id: str = Input(validator = airfoil_found)             # Inner airfoil name
@@ -127,3 +127,9 @@ class LiftingSurface(LoftedSolid):
             section = LiftingSection(
                 
             )
+
+
+if __name__ == '__main__':
+    from parapy.gui import display
+    wing = LiftingSurface(name="wing_test")
+    display(wing)
