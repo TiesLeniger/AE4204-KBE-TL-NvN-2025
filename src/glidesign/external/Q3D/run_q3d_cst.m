@@ -1,4 +1,4 @@
-function [Res, AC] = run_q3d_cst(wing_planform_geom,  wing_airfoils, wing_incidence_angle, mach, reynolds, speed, alpha, altitude, density)
+function [Res, AC] = run_q3d_cst(wing_planform_geom, wing_airfoils, wing_incidence_angle, mach, reynolds, speed, alpha, altitude, density)
 
    % Wing planform geometry format (expects half of symmetric wing):
    %                 x     y     z   chord(m)    twist angle (deg)
