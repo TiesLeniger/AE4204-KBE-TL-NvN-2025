@@ -5,19 +5,20 @@ from typing import Optional
 import numpy as np
 
 # ParaPy imports
-from parapy.geom import GeomBase, translate, rotate, MirroredShape, LoftedSolid, Position
+from parapy.geom import GeomBase, translate, rotate, LoftedSolid, Position
 from parapy.core import Input, Attribute, Part
-from parapy.core.validate import OneOf, Range, GreaterThan, Validator
+from parapy.core.validate import OneOf, Range, GreaterThan, Validator, GreaterThanOrEqualTo
 
 # Custom imports
 from ..core import airfoil_found, validate_equal_length_lists
 from .airfoil import Airfoil
 from .ref_frame import Frame
 
-class LiftingSection(LoftedSolid):
-
-    #position: Optional[Position] = Input(Position(0.0, 0.0, 0.0))
-    orientation: Optional[tuple[float, float, float]] = Input((0.0, 0.0, 0.0))
+class LiftingSection(GeomBase):
+    
+    section_idx: int = Input(0, validator = GreaterThanOrEqualTo(0))
+    previous_section: Optional["LiftingSection"] = Input(None)          # Previous section (used for positioning)
+    parent_surface: "LiftingSurface" = Input()
 
     root_airfoil_id: str = Input(validator = airfoil_found)             # Inner airfoil name
     tip_airfoil_id: str = Input(validator = airfoil_found)              # Outer airfoil name
@@ -34,29 +35,20 @@ class LiftingSection(LoftedSolid):
     control_surface: str = Input("None", OneOf(                         # Control surface on the section
         "None", "Aileron", "Flaperon", "Flap", "Airbrake"))
     
-    previous_section: Optional["LiftingSection"] = Input(None)          # Previous section (used for positioning)
-    
     mesh_deflection: float = Input(1e-4)
-    
-    @Attribute
-    def profiles(self):
-        return [self.root_airfoil, self.tip_airfoil]
 
     @Attribute
     def root_position(self):
-        if self.previous_section is None:
-            return rotate(self.position,
-                          "x", self.orientation[0],
-                          "y", self.orientation[1],
-                          "z", self.orientation[2],
-                          deg = True
-                        )
-        else:
+        if self.section_idx == 0:
+            return self.parent_surface.position
+        elif self.previous_section:
             return self.previous_section.tip_position
+        else:
+            raise ValueError(f"Section index is larger than 0 ({self.section_idx}) but a previous section was not provided")
     
     @Attribute
     def tip_position(self):
-        rotated_pos = rotate(self.root_airfoil.position, "y", self.twist, deg = True)
+        rotated_pos = rotate(self.root_position, "y", self.twist, deg = True)
         sweep_x = self.span * np.tan(np.deg2rad(self.sweep)) + (self.root_chord - self.tip_chord) * self.sweep_loc
         translated_pos = translate(rotated_pos,
                                    "x", sweep_x,
@@ -82,6 +74,13 @@ class LiftingSection(LoftedSolid):
                        chord = self.tip_chord,
                        position = self.tip_position,
                        )
+    
+    @Part
+    def lofted_surface(self):
+        return LoftedSolid(
+            profiles = [self.root_airfoil, self.tip_airfoil],
+            mesh_deflection = self.mesh_deflection
+        )
 
 class LiftingSurface(LoftedSolid):
     # Global parameters
