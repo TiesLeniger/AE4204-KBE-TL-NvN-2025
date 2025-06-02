@@ -74,19 +74,13 @@ class LiftingSection(GeomBase):
                        chord = self.tip_chord,
                        position = self.tip_position,
                        )
-    
-    @Part
-    def lofted_surface(self):
-        return LoftedSolid(
-            profiles = [self.root_airfoil, self.tip_airfoil],
-            mesh_deflection = self.mesh_deflection
-        )
 
-class LiftingSurface(LoftedSolid):
+class LiftingSurface(GeomBase):
     # Global parameters
     name: str = Input()
     position: Position = Input(Position(0.0, 0.0, 0.0))
     orientation: tuple[float, float, float] = Input((0.0, 0.0, 0.0))
+    surface_root_chord: float = Input(0.5, validator = GreaterThan(0.0))
 
     # Section inputs
     root_airfoil_ids: list[str] = Input(["nlf1-0015.dat"])
@@ -112,21 +106,49 @@ class LiftingSurface(LoftedSolid):
             "sec_sweeplocs",
             "sec_tapers"
         ])
+    
+    @Attribute
+    def num_sections(self) -> int:
+        return len(self.sec_spans)
 
+    @Attribute
+    def sec_root_chords(self) -> list[float]:
+        sec_root_chords = [self.surface_root_chord]
+        for taper in self.sec_tapers[:-1]:
+            sec_root_chords.append(sec_root_chords[-1] * taper)
+        return sec_root_chords
+
+    @Attribute
+    def sec_tip_chords(self) -> list[float]:
+        return [root * taper for root, taper in zip(self.sec_root_chords, self.sec_tapers)]
+    
     @Part
     def sections(self):
-        previous = None
-        sections = []
-        n = len(self.root_airfoil_ids)
-        for i in range(n):
-            if i == 0:
-                root_position = self.position
-            else:
-                root_position = None
-            section = LiftingSection(
-                
+        def builder(i):
+            return LiftingSection(
+                section_idx = i,
+                previous_section = self.sections[i-1] if i>0 else None,
+                parent_surface = self,
+                root_airfoil_id = self.root_airfoil_ids[i],
+                tip_airfoil_id = self.tip_airfoil_ids[i],
+                root_chords = self.sec_root_chords[i],
+                taper_ratio = self.sec_tapers[i],
+                span = self.sec_spans[i],
+                twist = self.sec_twists[i],
+                dihedral=self.sec_dihedrals[i],
+                sweep=self.sec_sweeps[i],
+                sweep_loc=self.sec_sweeplocs[i],
+                control_surface="None",                 # TODO: add controlsurface functionality
+                mesh_deflection=self.mesh_deflection 
             )
-
+        return builder, self.num_sections
+    
+    @Part
+    def lofted_surface(self):
+        return LoftedSolid(
+            profiles=[s.root_airfoil for s in self.sections] + [self.sections[-1].tip_airfoil],
+            mesh_deflection=self.mesh_deflection
+        )
 
 if __name__ == '__main__':
     from parapy.gui import display
