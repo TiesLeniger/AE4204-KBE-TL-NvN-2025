@@ -3,6 +3,7 @@ from typing import Optional
 
 # Python third party imports
 import numpy as np
+import matlab
 
 # ParaPy imports
 from parapy.geom import GeomBase, translate, rotate, LoftedSolid, Position
