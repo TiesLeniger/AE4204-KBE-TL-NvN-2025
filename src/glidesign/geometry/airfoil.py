@@ -19,7 +19,7 @@ class Airfoil(PositionedFittedCurve):
 
     airfoil_name: str = Input("nlf1-0015", validator = airfoil_found)
     chord: float = Input(1.0)
-    cst_poly_order: int = Input(4)
+    cst_poly_order: int = Input(5)
     num_points: int = Input(30)
     points_spacing: str = Input('cosine', validator = OneOf(['cosine', 'constant']))
     closed_TE: bool = Input(True)
