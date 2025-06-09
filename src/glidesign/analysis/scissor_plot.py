@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 # ParaPy imports
 
 # Custom imports
-#from glidesign.geometry import Glider
+#from ..geometry import Glider
+from ..geometry import Glider
 
 #TODO: make it automatically take inputs from glidesign and outputs from aerodynamic analysis
 
@@ -18,7 +19,7 @@ SM = 0.05                     #Stability margin [-]
 x_ac = 0.25                   #Location aerodynamic centre w.r.t. MAC [-]
 s_h = 1.4                     #Horizontal tail surface [m^2]
 s = 10.5                      #Wing surface area  [m^2]
-l_h = 5                       #Tail length (distance AC wing - AC horizontal tail) [m]
+l_h = Glider.hor_tail_pos_long - Glider.wing_pos_long                       #Tail length (distance AC wing - AC horizontal tail) [m]
 c = 1.2                       #Mean aerodynamic wing chord length [m]
 
 #Aerodynamic parameters
@@ -48,15 +49,15 @@ x_cg_controllability = x_cg_controllability_limit(s_h_s_range)
 
 current_sh_s = s_h / s
 
-#Plot
-plt.figure(figsize=(10,6))
-plt.plot(x_cg_stability, s_h_s_range, label='Stability Limit', color='blue')
-plt.plot(x_cg_controllability, s_h_s_range, label='Controllability Limit', color='red')
-plt.axhline(current_sh_s, color='green', linestyle='--', label=f'Current Sh/S = {current_sh_s:.2f}')
-plt.xlabel('Xcg / MAC [-]')
-plt.ylabel('Sh/S [-]')
-plt.title('Scissor Plot')
-plt.grid(True)
-plt.legend()
-plt.show()
+def plot_scissor_plot():
+    plt.figure(figsize=(10,6))
+    plt.plot(x_cg_stability, s_h_s_range, label='Stability Limit', color='blue')
+    plt.plot(x_cg_controllability, s_h_s_range, label='Controllability Limit', color='red')
+    plt.axhline(current_sh_s, color='green', linestyle='--', label=f'Current Sh/S = {current_sh_s:.2f}')
+    plt.xlabel('Xcg / MAC [-]')
+    plt.ylabel('Sh/S [-]')
+    plt.title('Scissor Plot')
+    plt.grid(True)
+    plt.legend()
+    plt.show()
 
