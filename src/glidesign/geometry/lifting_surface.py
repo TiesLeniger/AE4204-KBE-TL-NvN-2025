@@ -11,7 +11,7 @@ from parapy.core import Input, Attribute, Part
 from parapy.core.validate import OneOf, Range, GreaterThan, Validator, GreaterThanOrEqualTo
 
 # Custom imports
-from ..core import airfoil_found, validate_equal_length_lists
+from ..core import airfoil_found, validate_equal_length_lists, fit_cst_airfoil
 from .airfoil import Airfoil
 from .ref_frame import Frame
 
@@ -61,6 +61,10 @@ class LiftingSection(GeomBase):
     @Attribute
     def tip_chord(self):
         return self.root_chord * self.taper_ratio
+    
+    @Attribute
+    def area(self):
+        return 0.5 * (self.root_chord + self.tip_chord) * self.span
 
     @Part
     def root_airfoil(self):
@@ -111,6 +115,41 @@ class LiftingSurface(GeomBase):
     @Attribute
     def num_sections(self) -> int:
         return len(self.sec_spans)
+    
+    @Attribute
+    def semi_span(self) -> float:
+        return sum(self.sec_spans)
+    
+    @Attribute
+    def surface_area(self) -> float:
+        return ([section.area for section in self.sections])
+    
+    @Attribute
+    def q3d_planform_geom(self) -> matlab.double:
+        planform_geom = [[0.0, 0.0, 0.0, self.surface_root_chord, self.orientation[1]]]
+        for i in range(self.num_sections):
+            sec_tip_pos = self.sections[i].tip_position
+            planform_geom.append([sec_tip_pos.x, sec_tip_pos.y, sec_tip_pos.z, self.sections[i].tip_chord, self.sec_twists[i]])
+        return matlab.double(planform_geom)
+    
+    @Attribute
+    def q3d_wing_airfoils(self) -> matlab.double:
+        cst_coeffs = []
+        cst_coeffs.append(self.sections[0].root_airfoil.cst_coeff_u + self.sections[0].root_airfoil.cst_coeff_l)
+        for i in range(self.num_sections):
+            cst_coeffs.append(self.sections[i].tip_airfoil.cst_coeff_u + self.sections[i].tip_airfoil.cst_coeff_l)
+        cst_coeffs = matlab.double(cst_coeffs)
+
+        eta = [0.0]
+        for i in range(self.num_sections):
+            eta.append(self.sections[i].tip_position.y / self.semi_span)
+        eta = matlab.double(eta)
+
+        return cst_coeffs, eta
+
+    @Attribute
+    def q3d_wing_incidence_angle(self) -> matlab.double:
+        return matlab.double([self.orientation[1]])
 
     @Attribute
     def sec_root_chords(self) -> list[float]:
@@ -128,7 +167,7 @@ class LiftingSurface(GeomBase):
         def builder(i):
             return LiftingSection(
                 section_idx = i,
-                previous_section = self.sections[i-1] if i>0 else None,
+                previous_section = self.sections[i-1] if i > 0 else None,
                 parent_surface = self,
                 root_airfoil_id = self.root_airfoil_ids[i],
                 tip_airfoil_id = self.tip_airfoil_ids[i],
