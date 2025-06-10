@@ -26,7 +26,7 @@ class GliderFuselage(GeomBase):
     ri = Input(0.7)                                                                 # profile radius at X_i
     si = Input(1.4, validator = GE(0))                                              # profile slope at X_i
     xi = Input(0.4, validator = Range(0.2, 1))                          # location of inflection point (non-dimensional)
-    t = Input(0.2)                                                                  #Trailing gap?
+    t = Input(0.2)                                                                  # Trailing gap?
     L = Input(7)                                                                    # fuselage length in meter
     D = Input(3.5)                                                                  # max diameter
 
