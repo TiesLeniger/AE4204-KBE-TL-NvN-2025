@@ -124,22 +124,38 @@ class LiftingSurface(LoftedSolid):
             ))
         return profile_list
 
+#Sorry als ik dit een beetje verpest heb, maar heb voor mezelf ff hier de full parameters toegevoegd (had ze nodig voor scissor_plot.py
+
     @Attribute
     def semi_span(self):
         return sum([sec.span for sec in self.sections])
+
+    @Attribute
+    def span(self):
+        return self.semi_span * 2
     
     @Attribute
-    def area(self):
+    def half_area(self):
         return sum([sec.area for sec in self.sections])
+
+    @Attribute
+    def full_area(self):
+        return self.half_area * 2
     
     @Attribute
     def wing_half_aspect_ratio(self):
-        return self.semi_span*self.semi_span / self.area
+        return self.semi_span*self.semi_span / self.half_area
+
+    @Attribute
+    def wing_full_aspect_ratio(self):
+        return self.wing_half_aspect_ratio * 2
     
     @Attribute
     def mean_aerodynamic_chord(self):
         return sum([sec.section_mean_aerodynamic_chord*sec.span for sec in self.sections])/self.semi_span
-    
+
+    a = wing_half_aspect_ratio
+
     @Attribute
     def q3d_planform_geom(self) -> matlab.double:
         root_x, root_y, root_z = self.profiles[0].position.location

@@ -5,13 +5,14 @@ import numpy as np
 
 # ParaPy imports
 from parapy.geom import GeomBase, translate, rotate, MirroredShape
-from parapy.core import Input, Attribute, Part
+from parapy.core import Input, Attribute, Part, action
 from parapy.core.validate import OneOf, Range, GE
 from unicodedata import mirrored
 
 # Custom imports
 from .lifting_surface import LiftingSurface, LiftingSection
 from .fuselage import GliderFuselage
+from glidesign.analysis import scissor_plot
 
 class Glider(GeomBase):
 
@@ -208,6 +209,11 @@ class Glider(GeomBase):
             L = self.fuselage_length,
             D = self.fuselage_max_diameter,
         )
+
+    @action
+    def scissor_plot(self):
+        from .. import plot_scissor_plot
+        return plot_scissor_plot(self)
 
 if __name__ == '__main__':
     from parapy.gui import display
