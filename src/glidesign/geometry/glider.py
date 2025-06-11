@@ -18,9 +18,6 @@ class Glider(GeomBase):
     # Top-level parameters
     occupants: int = Input(1, validator = OneOf([1, 2]))                                    # Number of occupants of the glider, default value is 1
     fai_class: str = Input("std", validator = OneOf(["std", "15", "18", "20", "open"]))     # FAI class of the glider, can be "std", "15", "18", "20" or "open"
-    max_glide_ratio: float = Input(40.0, validator = Range(25, 75))                         # Maximum lift to drag, or glide, ratio
-    min_descent_rate: float = Input(-0.3, validator = Range(-0.5, -0.2))                    # Minimum descent rate of the glider
-    water_vol: float = Input(0.0, validator = Range(0.0, 250.0))                            # Water tank volume in the glider [L]
     engine_type: str = Input("No engine", validator = OneOf([                               # Glider support engine type
         "FES", "Turbo", "Self launch", "Jet", "No engine"
     ]))

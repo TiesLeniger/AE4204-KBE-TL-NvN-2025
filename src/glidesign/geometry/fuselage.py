@@ -1,91 +1,124 @@
 # Python native imports
+import math
 
 # Python third party imports
-import numpy as np
+
 
 # ParaPy imports
-from parapy.geom import GeomBase, Circle, BSplineCurve, Point, Vector, translate, rotate, MirroredShape, LoftedSurface, \
-    Position, LoftedShell
-from parapy.core import Input, Attribute, Part, child
-from parapy.core.validate import OneOf, Range, GreaterThan
+from parapy.geom import GeomBase, Point, PointCloud, Vector, RevolvedSurface, InterpolatedCurve
+from parapy.core import Input, Attribute, Part
+from parapy.core.validate import Range, GE
+
 
 # Custom imports
-#from .airfoil import Airfoil
+
 
 class GliderFuselage(GeomBase):
 
     name: str = Input()
     color: str = Input('white')
 
-    length: float = Input()
-    max_diameter: float = Input()
+    # Design parameters - see FIGURE 1 - https://cafe.foundation/v2/pdf_tech/Drag.Reduction/5.AIAA-48131-445.pdf
 
-    relative_section_diameter: list[float] = Input([5, 40, 60, 80, 90, 100, 100, 100, 100, 90, 80, 70, 60, 50, 40, 35, 33, 29, 28, 27, 26, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25, 25]) #Percentage of maximum fuselage diameter
+    xm = Input(0.25, validator = Range(0, 0.6))                         # X_m / L
+    k1 = Input(1, validator = GE(0))                                                # curvature at X_m
+    rn = Input(1.1, validator = GE(0))                                              # radius of curvature at nose (non-dimensional)
+    ri = Input(0.7)                                                                 # profile radius at X_i
+    si = Input(1.4, validator = GE(0))                                              # profile slope at X_i
+    xi = Input(0.4, validator = Range(0.2, 1))                          # location of inflection point (non-dimensional)
+    t = Input(0.2)                                                                  # Trailing gap?
+    L = Input(7)                                                                    # fuselage length in meter
+    D = Input(3.5)                                                                  # max diameter
 
     @Attribute
-    def section_diameter(self) -> list[float]:
-        return [i * self.max_diameter/100. for i in self.relative_section_diameter]
+    def fr(self):
+        return self.L / self.D                                                      #Finesse ratio
 
-    @Attribute
-    def section_length(self) -> float:
-        return self.length / (len(self.relative_section_diameter) - 1)
+    # --------- Forebody ---------
+    def f1(self, x):
+        return -2 * x * (x - 1) ** 3
 
+    def f2(self, x):
+        return -x ** 2 * (x - 1) ** 2
+
+    def g(self, x):
+        return x ** 2 * (3 * x ** 2 - 8 * x + 6)
+
+    def r_forebody(self, x):
+        x_hat = x / self.xm
+        value_fore = (1 / (2 * self.fr)) * math.sqrt(self.rn * self.f1(x_hat) + self.k1 * self.f2(x_hat) + self.g(x_hat))
+        return value_fore
+
+    # --------- Midbody ---------
+    def f1_mid(self, x):
+        return -0.5 * x ** 3 * (x - 1) ** 2
+
+    def f2_mid(self, x):
+        return x - x ** 3 * (3 * x ** 2 - 8 * x + 6)
+
+    def g_mid(self, x):
+        return x ** 3 * (6 * x ** 2 - 15 * x + 10)
+
+    def r_midbody(self, x):
+        x_hat = (self.xi - x) / (self.xi - self.xm)
+        k1m = ((self.xi / self.xm) - 1) ** 2 * self.k1 / (1 - self.ri)
+        value_mid = (1 / (2 * self.fr)) * (self.ri + (1 - self.ri) * (k1m * self.f1_mid(x_hat) + self.si * self.f2_mid(x_hat) + self.g_mid(x_hat)))
+        return value_mid
+
+    # --------- Afterbody ---------
     @Attribute
-    def spine_points(self):
-        return [
-            Point(0.0, 0, 0.0),               # nose
-            Point(1.5, 0, 0.2),               # cockpit rise
-            Point(2.3, 0, 0.4),
-            Point(3.0, 0, 0.6),               # max diameter
-            Point(4.5, 0, 0.6),               # beginning taper
-            Point(6.0, 0, 0.6),               # tail boom
-            Point(self.length, 0, 0.6)                # tail tip
-        ]
+    def s_ia(self):
+        return ((1 - self.ri) * (1 - self.xi) * self.si) / ((self.xi - self.xm) * self.ri)
+
+    def f1_aft(self, x):
+        return 1 - x ** 3 * (6 * x ** 2 - 15 * x + 10)
+
+    def f2_aft(self, x):
+        return -x ** 3 * (3 * x ** 2 - 7 * x + 4)
+
+    def r_afterbody(self, x):
+        x_hat = (1 - x) / (1 - self.xi)
+        value_aft = (self.ri / (2 * self.fr)) * (1 + ((self.t / self.ri) - 1) * self.f1_aft(x_hat) + self.s_ia * self.f2_aft(x_hat))
+        return value_aft
+
+    # --------- Full Profile Points ---------
+    @Attribute
+    def profile_points(self):
+        def get_r(x_hat):
+            if 0 <= x_hat <= self.xm:
+                return self.r_forebody(x_hat)
+            elif self.xm < x_hat <= self.xi:
+                return self.r_midbody(x_hat)
+            elif self.xi < x_hat <= 1:
+                return self.r_afterbody(x_hat)
+
+        num_points = int(self.L * 10) #10 points per meter (1 each 10 cm)
+        dx_hat = 1.0 / (num_points - 1)
+
+        pts = [Point(x=x_hat * self.L,
+                     y=0,
+                     z=get_r(x_hat) * self.D / 2)
+               for x_hat in [i * dx_hat for i in range(num_points)]]
+        return pts
 
     @Part
-    def fuselage_spine(self):
-        return BSplineCurve(self.spine_points,
-                            color='black'
-                            )
-
-    @Attribute
-    def x_equidistant_points_bspline(self):
-        num_samples = 1000
-        t_samples = np.linspace(0, 1, num_samples)
-        points = [self.fuselage_spine.point_at_parameter(t) for t in t_samples]
-        x_vals = [pt.x for pt in points]
-
-        x_start = 0
-        x_end = self.length
-        x_targets = np.linspace(x_start, x_end, len(self.relative_section_diameter))
-
-        t_targets = np.interp(x_targets, x_vals, t_samples)
-
-        return [self.fuselage_spine.point_at_parameter(t) for t in t_targets]
+    def point_line(self):
+        return PointCloud(self.profile_points)
 
     @Part
-    def fuselage_profiles(self):
-        return Circle(quantify=len(self.relative_section_diameter),
-                      color = 'black',
-                      radius = self.section_diameter[child.index]/2, #Convert diameter into radius
-                      position=translate(self.position,
-                                         'x', self.x_equidistant_points_bspline[child.index].x,
-                                         'y', self.x_equidistant_points_bspline[child.index].y,
-                                         'z', self.x_equidistant_points_bspline[child.index].z
-                                         ).rotate('y', 90, deg=True)
-                      # Apply per-profile rotation
-                      )
+    def fuselage_outerline(self):
+        return InterpolatedCurve(points=self.profile_points,
+                                 color='black'
+        )
 
     @Part
-    def fuselage_lofted(self):
-        return LoftedShell(profiles = self.fuselage_profiles,
-                           ruled=True,
-                           color = self.color,
-                           hidden = not(__name__ == '__main__')
+    def fuselage_surface(self):
+        return RevolvedSurface(basis_curve=self.fuselage_outerline,
+                               direction = Vector(1, 0, 0),
+                               color=self.color
         )
 
 if __name__ == '__main__':
     from parapy.gui import display
-    fus = GliderFuselage(name="fuselage", max_diameter= 0.75, length= 6.5)
-    print(fus.x_equidistant_points_bspline)
+    fus = GliderFuselage(name="fuselage")
     display(fus)
