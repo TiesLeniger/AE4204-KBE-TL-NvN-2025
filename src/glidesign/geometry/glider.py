@@ -10,7 +10,7 @@ from parapy.core.validate import OneOf, Range
 from unicodedata import mirrored
 
 # Custom imports
-from .lifting_surface import LiftingSurface
+from .lifting_surface import LiftingSurface, LiftingSection
 from .fuselage import GliderFuselage
 
 class Glider(GeomBase):
@@ -53,7 +53,10 @@ class Glider(GeomBase):
     # Fuselage parameters
     fuselage_length: float = Input(7, validator = Range(4.0, 12.0))
     fuselage_max_diameter: float = Input(0.8, validator = Range(0.3, 1.5))
-    fuselage_max_radius = fuselage_max_diameter / 2.0
+    
+    @Attribute
+    def fuselage_max_radius(self):
+        return self.fuselage_max_diameter/2
 
     @Attribute
     def wingspan(self):
@@ -74,18 +77,29 @@ class Glider(GeomBase):
     def wing_position(self):
         return translate(self.position,
                         'x', self.wing_pos_long * self.fuselage_length,
-                         'z', self.wing_pos_vert * self.fuselage_max_radius)
+                        'z', self.wing_pos_vert * self.fuselage_max_radius)
 
     @Part
     def right_wing(self):
         return LiftingSurface(
-            airfoil_id = self.airfoil_id,
-            winspan = self.wingspan,
-            twist = self.twist,
-            dihedral = self.dihedral,
-            sweep = self.sweep,
-            taper=self.taper,
-            flap_type = self.flap_type,
+            name = "Main wing",
+            incidence_angle = 0.0,
+            sections = [LiftingSection(
+                idx = 0,
+                root_af = "nlf1-0015",
+                tip_af = "nlf1-0015",
+                root_chord = 0.5,
+                tip_chord = 0.2,
+                span = 7.3,
+                twist = 0.0,
+                dihedral = 0.0,
+                sweep = 0.0,
+                sweep_loc = 0.25
+            )],
+            mesh_deflection = 1e-4,
+            af_cst_order = 5,
+            af_num_points = 40,
+            af_closed_TE = True,
             position = self.wing_position
         )
 
@@ -108,39 +122,71 @@ class Glider(GeomBase):
     @Part
     def hor_tail(self):
         return LiftingSurface(
-            airfoil_id = self.hor_tail_airfoil_id,
+            name = "Horizontal Tail",
+            incidence_angle = 0.0,
+            sections = [LiftingSection(
+                idx = 0,
+                root_af = "naca0010",
+                tip_af = "naca0010",
+                root_chord = 0.4,
+                tip_chord = 0.2,
+                span = 1.0,
+                twist = 0.0,
+                dihedral = 0.0,
+                sweep = 10.0,
+                sweep_loc = 0.25
+            )],
+            mesh_deflection = 1e-4,
+            af_cst_order = 5,
+            af_num_points = 40,
+            af_closed_TE = True,
             position = self.hor_tail_position
-            #TODO: add a certain default for planform parameters such that they can later be deternined in the analyses based on wing size
         )
 
     @Attribute
     def ver_tail_position(self):
         return rotate(translate(self.position,
-                                'x', self.ver_tail_pos_long * self.fuselage_length,),
+                                'x', self.ver_tail_pos_long * self.fuselage_length),
                       'x', np.radians(90))
 
     @Part
     def vert_tail(self):
         return LiftingSurface(
-            airfoil_id = self.vert_tail_airfoil_id,
-            position = self.vert_tail_position
-            # TODO: add a certain default for planform parameters such that they can later be deternined in the analyses based on wing size
+            name = "Horizontal Tail",
+            incidence_angle = 0.0,
+            sections = [LiftingSection(
+                idx = 0,
+                root_af = "naca0010",
+                tip_af = "naca0010",
+                root_chord = 0.4,
+                tip_chord = 0.2,
+                span = 1.5,
+                twist = 0.0,
+                dihedral = 0.0,
+                sweep = 10.0,
+                sweep_loc = 0.0
+            )],
+            mesh_deflection = 1e-4,
+            af_cst_order = 5,
+            af_num_points = 40,
+            af_closed_TE = True,
+            position = self.ver_tail_position
         )
 
-    @Part
-    def winglet(self):
-        return LiftingSurface(
-            position = self.winglet_position,
-            span = self.winglet_length
-            #TODO: add other winglet parameters
-        )
+    # @Part
+    # def winglet(self):
+    #     return LiftingSurface(
+    #         position = self.winglet_position,
+    #         span = self.winglet_length
+    #         #TODO: add other winglet parameters
+    #     )
 
     @Part
     def fuselage(self):
         return GliderFuselage(
             position = self.position, #Starts at origin
-            length = self.fuselage_length,
-            max_diameter = self.fuselage_max_diameter,
+            L = self.fuselage_length,
+            D = self.fuselage_max_diameter,
         )
 
 if __name__ == '__main__':

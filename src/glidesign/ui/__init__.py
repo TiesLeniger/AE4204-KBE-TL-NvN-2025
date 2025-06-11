@@ -1,1 +1,1 @@
-from glider_app import GliderApp
+from .glider_app import GliderApp
