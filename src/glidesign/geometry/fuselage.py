@@ -9,9 +9,7 @@ from parapy.geom import GeomBase, Point, PointCloud, Vector, RevolvedSurface, In
 from parapy.core import Input, Attribute, Part
 from parapy.core.validate import Range, GE
 
-
 # Custom imports
-
 
 class GliderFuselage(GeomBase):
 
@@ -19,6 +17,16 @@ class GliderFuselage(GeomBase):
     color: str = Input('white')
 
     # Design parameters - see FIGURE 1 - https://cafe.foundation/v2/pdf_tech/Drag.Reduction/5.AIAA-48131-445.pdf
+
+    xm = Input(0.25, validator = Range(0, 0.6))                         # X_m / L
+    k1 = Input(1, validator = GE(0))                                                # curvature at X_m
+    rn = Input(1.1, validator = GE(0))                                              # radius of curvature at nose (non-dimensional)
+    ri = Input(0.7)                                                                 # profile radius at X_i
+    si = Input(1.4, validator = GE(0))                                              # profile slope at X_i
+    xi = Input(0.4, validator = Range(0.2, 1))                          # location of inflection point (non-dimensional)
+    t = Input(0.2)                                                                  # Trailing gap?
+    L = Input(7)                                                                    # fuselage length in meter
+    D = Input(3.5)                                                                  # max diameter
 
     xm = Input(0.25, validator = Range(0, 0.6))                         # X_m / L
     k1 = Input(1, validator = GE(0))                                                # curvature at X_m
