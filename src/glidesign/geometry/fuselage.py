@@ -117,8 +117,3 @@ class GliderFuselage(GeomBase):
                                direction = Vector(1, 0, 0),
                                color=self.color
         )
-
-if __name__ == '__main__':
-    from parapy.gui import display
-    fus = GliderFuselage(name="fuselage")
-    display(fus)
