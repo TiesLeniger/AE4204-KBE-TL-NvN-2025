@@ -7,13 +7,14 @@ import matlab
 
 # ParaPy imports
 from parapy.geom import GeomBase, translate, rotate, LoftedSolid, Position, Point, Orientation, Vector
-from parapy.core import Input, Attribute, Part
-from parapy.core.validate import OneOf, Range, GreaterThan, Validator, GreaterThanOrEqualTo
+from parapy.core import Input, Attribute, Part, Base
+from parapy.core.validate import OneOf, Range, GreaterThan, Validator, GreaterThanOrEqualTo, LessThan
 
 # Custom imports
 from ..core import airfoil_found
 from .airfoil import Airfoil
 from .ref_frame import Frame
+from ..external import MATLAB_Q3D_ENGINE
 
 class LiftingSection(GeomBase):
     """
@@ -48,6 +49,15 @@ class LiftingSection(GeomBase):
     @Attribute
     def section_mean_aerodynamic_chord(self):
         return (2/3)*self.root_chord*((1+self.taper_ratio+self.taper_ratio**2)/(1+self.taper_ratio))
+    
+class Q3DData(Base):
+
+    mach = Input(0.0, validator = GreaterThanOrEqualTo(0.0))            # Mach number for adding compressibility effects to Q3D [-]
+    reynolds = Input(30.0, validator = GreaterThan(0.0))                # Reynolds number for viscous analysis of Q3D [-]
+    velocity = Input(30.0, validator = GreaterThan(0.0))                # Velocity at which Q3D analysis is run [m/s]
+    alpha = Input(2.0, validator = LessThan(14.0))                      # Angle of attack at which Q3D is run [deg]
+    altitude = Input(500.0, validator = GreaterThan(0.0))               # Altitude for Q3D [m]  
+    density = Input(1.225, validator = GreaterThan(0.0))                # Air density for Q3D analysis [kg/m^3]
 
 class LiftingSurface(LoftedSolid):
 
@@ -71,6 +81,7 @@ class LiftingSurface(LoftedSolid):
     af_cst_order: int = Input(5)                                        # Polynomial order to use for CST representation of airfoils
     af_num_points: int = Input(30)                                      # Number of points to use for NACA airfoil generation
     af_closed_TE: bool = Input(True)                                    # Closed trailing edges for surface airfoils
+    Q3D_params: Q3DData = Input(Q3DData())
 
     @Validator
     def validate_section_airfoils(self):
@@ -128,3 +139,70 @@ class LiftingSurface(LoftedSolid):
     @Attribute
     def mean_aerodynamic_chord(self):
         return sum([sec.section_mean_aerodynamic_chord*sec.span for sec in self.sections])/self.semi_span
+    
+    @Attribute
+    def q3d_planform_geom(self) -> matlab.double:
+        root_x, root_y, root_z = self.profiles[0].position.location
+        planform_geom = [[root_x, root_y, root_z, self.profiles[0].chord, 0.0]]
+        for i in range(1, self.num_sections):
+            tip_x, tip_y, tip_z = self.profiles[i].position.location
+            twist_angle = self.profiles[i].position.orientation
+            planform_geom.append([tip_x, tip_y, tip_z, self.profiles[i].chord, twist_angle])
+        return matlab.double(planform_geom)
+    
+    @Attribute
+    def q3d_cst_airfoils(self) -> matlab.double:
+        cst_coeffs = []
+        cst_coeffs.append(self.profiles[0].cst_coeff_u + self.profiles[0].cst_coeff_l)
+        for i in range(1, self.num_sections + 1):
+            cst_coeffs.append(self.profiles[i].cst_coeff_u + self.profiles[i].cst_coeff_l)
+        cst_coeffs = matlab.double(cst_coeffs)
+
+        return cst_coeffs
+    
+    @Attribute
+    def q3d_eta_airfoils(self) -> matlab.double:
+        eta = [0.0]
+        for i in range(1, self.num_sections + 1):
+            eta.append(self.profiles[i].position.location.y / self.semi_span)
+        return matlab.double(eta)
+    
+    @Attribute
+    def q3d_data(self):
+        """All inputs and results from running Q3D (MATLAB)"""
+        return MATLAB_Q3D_ENGINE.run_q3d_cst(
+            self.q3d_planform_geom,
+            self.q3d_cst_airfoils,
+            self.q3d_eta_airfoils,
+            matlab.double(self.incidence_angle),
+            self.Q3D_params.mach,
+            self.Q3D_params.reynolds,
+            self.Q3D_params.velocity,
+            self.Q3D_params.alpha,
+            self.Q3D_params.altitude,
+            self.Q3D_params.density
+        )
+    
+    @Attribute
+    def q3d_res(self) -> dict:
+        """q3d results"""
+        return self.q3d_data[0]
+
+    @Attribute
+    def q3d_ac(self) -> dict:
+        """q3d inputs"""
+        return self.q3d_data[1]
+
+    @Attribute
+    def wing_cl(self) -> float:
+        return self.q3d_res["CLwing"]
+
+    @Attribute
+    def wing_cd(self) -> float:
+        return self.q3d_res["CDwing"]
+    
+    @Part
+    def frame(self):
+        """to visualize the given lifting surface reference frame"""
+        return Frame(pos=self.position,
+                     hidden=False)
