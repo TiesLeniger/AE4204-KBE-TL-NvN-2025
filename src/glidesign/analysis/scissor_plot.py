@@ -7,10 +7,14 @@ import matplotlib.pyplot as plt
 # ParaPy imports
 
 # Custom imports
-#from ..geometry import Glider
+from ..geometry import Glider
 #from glidesign.geometry import Glider
 
 #TODO: make it automatically take inputs from glidesign and outputs from aerodynamic analysis
+
+#Initiate (testing purposes)
+glider = Glider(name="glider_test")
+
 
 #Designer input
 SM = 0.05                     #Stability margin [-]
@@ -38,7 +42,7 @@ velocity_h = 55               #Velocity at the horizontal tail [m/s]
 wingspan = 15                 #Glider wingspan [m]
 m_tv = 1                      #Distance between horizontal tail and vortex shed plane
 r = 2*l_h / wingspan          #Derived from tail length
-sweep_4c = np.deg2rad(10)     #Quarter chord sweep angle [rad]
+sweep_4c = np.deg2rad(glider.sweep)     #Quarter chord sweep angle [rad]
 AR = 25                       #Aspect ratio [-]
 
 def k_e_sweep():

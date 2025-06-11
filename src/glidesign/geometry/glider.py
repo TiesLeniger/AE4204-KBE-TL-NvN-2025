@@ -30,8 +30,8 @@ class Glider(GeomBase):
     taper: float = Input(0.5, validator = Range(0.1, 1.0))                                  # Taper ratio
     flap_type: str = Input("No flaps", validator = OneOf([
         "No flaps", "Flaperon", "Discrete flap"]))
-    wing_pos_long: float = Input(0.4, validator = Range(0, 1))                          #Longitudinal wing position as fraction fuselage length
-    wing_pos_vert: float = Input(0.5, validator = Range(0, 1))                          #Vertical wing position as fraction max fus radius
+    wing_pos_long: float = Input(0.3, validator = Range(0, 1))                          #Longitudinal wing position as fraction fuselage length
+    wing_pos_vert: float = Input(0.2, validator = Range(0, 1))                          #Vertical wing position as fraction max fus radius
 
     # Winglet parameters
     winglet_length: float = Input(0.0, validator = Range(0.0, 1.0))                         # Winglet length in [m]
@@ -51,8 +51,8 @@ class Glider(GeomBase):
     ver_tail_height: float = Input(1.4, validator= Range(0.2, 2))                #Height of vertical tailplane in meters
 
     # Fuselage parameters
-    fuselage_length: float = Input(7, validator = Range(4.0, 12.0))
-    fuselage_max_diameter: float = Input(0.8, validator = Range(0.3, 1.5))
+    fuselage_length: float = Input(6.5, validator = Range(4.0, 12.0))
+    fuselage_max_diameter: float = Input(0.7, validator = Range(0.3, 1.8))
     
     @Attribute
     def fuselage_max_radius(self):
