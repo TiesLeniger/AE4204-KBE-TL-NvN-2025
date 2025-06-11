@@ -5,7 +5,7 @@ import os
 import numpy as np
 
 # Parapy imports
-from parapy.geom import PositionedFittedCurve, Point
+from parapy.geom import FittedCurve, Point
 from parapy.core import Attribute, Part, Input
 from parapy.core.validate import OneOf, Range
 from kbeutils.data import airfoils
@@ -15,7 +15,7 @@ from ..core import airfoil_found, generate_naca4
 from ..core.cst_curves import fit_cst_airfoil
 from .ref_frame import Frame
 
-class Airfoil(PositionedFittedCurve):
+class Airfoil(FittedCurve):
 
     airfoil_name: str = Input("nlf1-0015", validator = airfoil_found)
     chord: float = Input(1.0)
