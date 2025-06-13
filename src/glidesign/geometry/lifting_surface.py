@@ -113,8 +113,6 @@ class LiftingSurface(LoftedSolid):
             ))
         return profile_list
 
-#Sorry als ik dit een beetje verpest heb, maar heb voor mezelf ff hier de full parameters toegevoegd (had ze nodig voor scissor_plot.py
-
     @Attribute
     def semi_span(self):
         return sum([sec.span for sec in self.sections])

@@ -6,6 +6,7 @@ import numpy as np
 # ParaPy imports
 from parapy.geom import GeomBase, translate, rotate, MirroredShape
 from parapy.core import Input, Attribute, Part, action
+from parapy.core.widgets import Dropdown
 from parapy.core.validate import OneOf, Range, GE
 
 from glidesign.geometry import lifting_surface
@@ -18,7 +19,7 @@ class Glider(GeomBase):
 
     # Top-level parameters
     occupants: int = Input(1, validator = OneOf([1, 2]))                                    # Number of occupants of the glider, default value is 1
-    fai_class: str = Input("std", validator = OneOf(["std", "15", "18", "20", "open"]))     # FAI class of the glider, can be "std", "15", "18", "20" or "open"
+    fai_class: str = Input("standard class", widget = Dropdown(["standard class", "15m class", "18m class", "20m class", "open class"]) ,validator = OneOf(["standard class", "15m class", "18m class", "20m class", "open class"]))     # FAI class of the glider, can be "std", "15", "18", "20" or "open"
     engine_type: str = Input("No engine", validator = OneOf([                               # Glider support engine type
         "FES", "Turbo", "Self launch", "Jet", "No engine"
     ]))
@@ -31,7 +32,7 @@ class Glider(GeomBase):
     wing_sweep: float = Input(0.0, validator = Range(-10.0, 10.0))                          # Quarter chord sweep angle [deg]
     wing_incidence: float = Input(0.0, validator = Range(-5.0, 5.0))                        # Wing Incidence angle [deg]
     wing_taper: float = Input(0.5, validator = Range(0.1, 1.0))                             # Taper ratio
-    flap_type: str = Input("No flaps", validator = OneOf([
+    flap_type: str = Input("No flaps", widget = Dropdown(["No flaps", "Flaperon", "Discrete flap"]), validator = OneOf([
         "No flaps", "Flaperon", "Discrete flap"]))
     wing_pos_long: float = Input(0.3, validator = Range(0, 1))                              #Longitudinal wing position as fraction fuselage length
     wing_pos_vert: float = Input(0.2, validator = Range(0, 1))                              #Vertical wing position as fraction max fus radius
@@ -54,6 +55,7 @@ class Glider(GeomBase):
     hor_tail_sweep: float = Input(5, validator=Range(-5.0, 5.0))                            # Quarter chord sweep angle [deg]
     hor_tail_incidence: float = Input(2, validator=Range(-5.0, 5.0))                        # Incidence angle [deg]
     hor_tail_taper: float = Input(0.5, validator=Range(0.1, 1.0))                           # Taper ratio
+    SM: float = Input(0.1, validator = Range(0, 0.2))                                   #Stability margin
 
     # Vertical tail parameters
     ver_tail_airfoil_id: float = Input()        # TODO: add validator                       # Vertical tail airfoil profile
@@ -73,16 +75,30 @@ class Glider(GeomBase):
     @Attribute
     def wingspan(self):
         #Define the wingspan based on FAI class limitations:
-        if self.fai_class == "std":
+        if self.fai_class == "standard class":
             return 15 #meters
-        elif self.fai_class == "15":
+        elif self.fai_class == "15m class":
             return 15 #metres
-        elif self.fai_class == "18":
+        elif self.fai_class == "18m class":
             return 18 #metres
-        elif self.fai_class == "20":
+        elif self.fai_class == "20m class":
             return 20 #metres
-        elif self.fai_class == "open":
+        elif self.fai_class == "open class":
             return self.open_class_wingspan                                                 # Open class has no wingspan limitation, user can define it (default = 25m)
+
+    @Attribute
+    def max_to_mass(self):
+        #Define the MTOM based on FAI class limitations:
+        if self.fai_class == "standard class":
+            return 525 #kg
+        elif self.fai_class == "15m class":
+            return 525 #kg
+        elif self.fai_class == "18m class":
+            return 600 #kg
+        elif self.fai_class == "20m class":
+            return 800 #kg
+        elif self.fai_class == "open class":
+            return 850 #kg
 
     @Attribute
     def wing_position(self):
@@ -231,7 +247,7 @@ class Glider(GeomBase):
     @action
     def scissor_plot(self):
         plot = ScissorPlot(
-            SM= 0.05,
+            SM= self.SM,
             x_ac= 0.25,
             s_h= self.hor_tail_surface_area,
             s= self.wing_surface_area,
