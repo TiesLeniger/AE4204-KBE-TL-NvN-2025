@@ -24,13 +24,13 @@ class ScissorPlot(Base):
     chord = Input()                   #Mean aerodynamic wing chord length [m]
 
     #Aerodynamic parameters (from aerodynamic analysis)
-    cm_ac = Input(-0.05)                 #Pitching moment coefficient around AC [-]
+    cm_ac = Input()                 #Pitching moment coefficient around AC [-]
 
-    cl_a_min_h = Input(0.7)              #Lift coefficient of airplane MINUS horizontal tail [-]
-    cl_h = Input(-0.2)                   #Lift coefficient of horizontal tail [-]
+    cl_a_min_h = Input()              #Lift coefficient of airplane MINUS horizontal tail [-]
+    cl_h = Input()                   #Lift coefficient of horizontal tail [-]
 
-    cl_alpha_h = Input(5)                #Lift curve slope coefficient of horizontal tail [/rad]
-    cl_alpha_a_min_h = Input(6)          #Lift curve slope coefficient of airplane MINUS horizontal tail (assumed equal to cl_alpha_w) [/rad]
+    cl_alpha_h = Input()                #Lift curve slope coefficient of horizontal tail [/rad]
+    cl_alpha_a_min_h = Input()          #Lift curve slope coefficient of airplane MINUS horizontal tail (assumed equal to cl_alpha_w) [/rad]
 
     velocity = Input()                 #Velocity in the freestream [m/s]
     velocity_h = Input()               #Velocity at the horizontal tail [m/s]
@@ -65,11 +65,14 @@ class ScissorPlot(Base):
     def x_cg_stability_limit(self, sh_s):
         return self.x_ac + ((self.cl_alpha_h / self.cl_alpha_a_min_h) * (1 - self.de_da_est) * sh_s * (self.l_h / self.chord) * (self.velocity_h / self.velocity) ** 2) - self.SM
 
+    def x_cg_stability_limit_no_sm(self, sh_s):
+        return self.x_ac + ((self.cl_alpha_h / self.cl_alpha_a_min_h) * (1 - self.de_da_est) * sh_s * (self.l_h / self.chord) * (self.velocity_h / self.velocity) ** 2)
+
     def x_cg_controllability_limit(self, sh_s):
         return self.x_ac - (self.cm_ac / self.cl_a_min_h) + ((self.cl_h / self.cl_a_min_h) * sh_s * (self.l_h /self.chord) * (self.velocity_h / self.velocity)**2)
 
     #Define Sh/S range
-    s_h_s_range = np.linspace(0.005, 1, 100)
+    s_h_s_range = np.linspace(0.005, 0.5, 100)
 
     @Attribute
     def current_sh_s(self):
@@ -79,6 +82,7 @@ class ScissorPlot(Base):
     def plot_scissor_plot(self):
         plt.figure(figsize=(10,6))
         plt.plot(self.x_cg_stability_limit(self.s_h_s_range), self.s_h_s_range, label='Stability Limit', color='blue')
+        plt.plot(self.x_cg_stability_limit_no_sm(self.s_h_s_range), self.s_h_s_range, label='Stability Limit (no margin)', linestyle = '--', color='blue')
         plt.plot(self.x_cg_controllability_limit(self.s_h_s_range), self.s_h_s_range, label='Controllability Limit', color='red')
         plt.axhline(self.current_sh_s, color='green', linestyle='--', label=f'Current Sh/S = {self.current_sh_s:.2f}')
         plt.xlabel('Xcg / MAC [-]')
