@@ -159,8 +159,8 @@ class LiftingSurface(LoftedSolid):
     def Q3D_params(self):
         return Q3DData()
     
-    @action
-    def q3d_data(self, label = "Run Q3D"):
+    @action(label = "Run Q3D")
+    def q3d_data(self):
         """All inputs and results from running Q3D (MATLAB)"""
         self.q3d_res = MATLAB_Q3D_ENGINE.run_q3d_cst(
             self.q3d_planform_geom,
