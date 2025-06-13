@@ -2,6 +2,7 @@
 
 # Python native imports
 import os
+import re
 
 # Python 3rd party imports
 
@@ -9,10 +10,19 @@ import os
 from kbeutils.data import airfoils
 from parapy.core.validate import AdaptedValidator
 
-airfoil_found = AdaptedValidator(lambda name: (
-        os.path.isfile(os.path.join(os.getcwd(), "input", "airfoils", name + ".dat")) or
-        os.path.isfile(os.path.join(airfoils.__path__[0], name + ".dat"))
-    ))
+def airfoil_validator(name: str) -> bool:
+    naca4_pattern = re.compile(r'^NACA\d{4}$', re.IGNORECASE)
+    name_upper = name.upper()
+
+    if naca4_pattern.match(name_upper):
+        return True
+    
+    input_path = os.path.isfile(os.path.join(os.getcwd(), "input", "airfoils", name + ".dat"))
+    kbeutils_path = os.path.isfile(os.path.join(airfoils.__path__[0], name + ".dat"))
+
+    return os.path.isfile(input_path) or os.path.isfile(kbeutils_path)
+
+airfoil_found = AdaptedValidator(airfoil_validator)
 
 def validate_equal_length_lists(object, attribute_names: list[str]):
     list_attributes = [getattr(object, name) for name in attribute_names]
