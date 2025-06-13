@@ -25,16 +25,16 @@ class Glider(GeomBase):
     open_class_wingspan = Input(25, validator = GE(18))                                     #In case of open class glider
 
     # Main wing parameters
-    wing_airfoil_id: str = Input()       # TODO: add validator                                   # Can be NACA 4- or 5-digit or a string referencing a '.dat' file with coordinates
-    wing_twist: float = Input(-2.0, validator = Range(-5.0, 5.0))                                # Twist of tip w.r.t root in [deg]
-    wing_dihedral: float = Input(3.0, validator = Range(-5.0, 5.0))                              # Wing dihedral angle [deg]
-    wing_sweep: float = Input(0.0, validator = Range(-10.0, 10.0))                                 # Quarter chord sweep angle [deg]
-    wing_incidence: float = Input(0.0, validator = Range(-5.0, 5.0))                             # Wing Incidence angle [deg]
+    wing_airfoil_id: str = Input()       # TODO: add validator                              # Can be NACA 4- or 5-digit or a string referencing a '.dat' file with coordinates
+    wing_twist: float = Input(-2.0, validator = Range(-5.0, 5.0))                           # Twist of tip w.r.t root in [deg]
+    wing_dihedral: float = Input(3.0, validator = Range(-5.0, 5.0))                         # Wing dihedral angle [deg]
+    wing_sweep: float = Input(0.0, validator = Range(-10.0, 10.0))                          # Quarter chord sweep angle [deg]
+    wing_incidence: float = Input(0.0, validator = Range(-5.0, 5.0))                        # Wing Incidence angle [deg]
     wing_taper: float = Input(0.5, validator = Range(0.1, 1.0))                             # Taper ratio
     flap_type: str = Input("No flaps", validator = OneOf([
         "No flaps", "Flaperon", "Discrete flap"]))
-    wing_pos_long: float = Input(0.3, validator = Range(0, 1))                          #Longitudinal wing position as fraction fuselage length
-    wing_pos_vert: float = Input(0.2, validator = Range(0, 1))                          #Vertical wing position as fraction max fus radius
+    wing_pos_long: float = Input(0.3, validator = Range(0, 1))                              #Longitudinal wing position as fraction fuselage length
+    wing_pos_vert: float = Input(0.2, validator = Range(0, 1))                              #Vertical wing position as fraction max fus radius
 
     # Winglet parameters
     winglet_length: float = Input(0.0, validator = Range(0.0, 1.0))                         # Winglet length in [m]
@@ -47,20 +47,20 @@ class Glider(GeomBase):
 
     # Horizontal tail parameters
     hor_tail_airfoil_id: float = Input()        # TODO: add validator                       # Horizontal tail airfoil profile
-    hor_tail_span: float = Input(1, validator = Range(0.3, 3))                  # Horizontal tail span
-    hor_tail_pos_long: float = Input(1, validator = Range(0.5, 1.3))             #Horizontal tail position as fraction of fuselage length
-    hor_tail_twist: float = Input(0, validator=Range(-5.0, 5.0))                     # Twist of tip w.r.t root in [deg]
-    hor_tail_dihedral: float = Input(0.0, validator=Range(-5.0, 5.0))                    # Dihedral angle [deg]
-    hor_tail_sweep: float = Input(5, validator=Range(-5.0, 5.0))                       # Quarter chord sweep angle [deg]
-    hor_tail_incidence: float = Input(2, validator=Range(-5.0, 5.0))                   # Incidence angle [deg]
-    hor_tail_taper: float = Input(0.5, validator=Range(0.1, 1.0))                   # Taper ratio
+    hor_tail_span: float = Input(1, validator = Range(0.3, 3))                              # Horizontal tail span
+    hor_tail_pos_long: float = Input(1, validator = Range(0.5, 1.3))                        #Horizontal tail position as fraction of fuselage length
+    hor_tail_twist: float = Input(0, validator=Range(-5.0, 5.0))                            # Twist of tip w.r.t root in [deg]
+    hor_tail_dihedral: float = Input(0.0, validator=Range(-5.0, 5.0))                       # Dihedral angle [deg]
+    hor_tail_sweep: float = Input(5, validator=Range(-5.0, 5.0))                            # Quarter chord sweep angle [deg]
+    hor_tail_incidence: float = Input(2, validator=Range(-5.0, 5.0))                        # Incidence angle [deg]
+    hor_tail_taper: float = Input(0.5, validator=Range(0.1, 1.0))                           # Taper ratio
 
     # Vertical tail parameters
     ver_tail_airfoil_id: float = Input()        # TODO: add validator                       # Vertical tail airfoil profile
-    ver_tail_pos_long: float = Input(1, validator=Range(0.5,1.3))                #Vertical tail position as fraction of fuselage length
-    ver_tail_height: float = Input(1.2, validator= Range(0.2, 2))                #Height of vertical tailplane in meters
-    ver_tail_sweep: float = Input(5, validator=Range(-5.0, 5.0))                       # Quarter chord sweep angle [deg]
-    ver_tail_taper: float = Input(0.6, validator=Range(0.1, 1.0))                   # Taper ratio
+    ver_tail_pos_long: float = Input(1, validator=Range(0.5,1.3))                           # Vertical tail position as fraction of fuselage length
+    ver_tail_height: float = Input(1.2, validator= Range(0.2, 2))                           # Height of vertical tailplane in meters
+    ver_tail_sweep: float = Input(5, validator=Range(-5.0, 5.0))                            # Quarter chord sweep angle [deg]
+    ver_tail_taper: float = Input(0.6, validator=Range(0.1, 1.0))                           # Taper ratio
 
     # Fuselage parameters
     fuselage_length: float = Input(6.5, validator = Range(4.0, 12.0))
@@ -82,7 +82,7 @@ class Glider(GeomBase):
         elif self.fai_class == "20":
             return 20 #metres
         elif self.fai_class == "open":
-            return self.open_class_wingspan #Open class has no wingspan limitation, user can define it (default = 25m)
+            return self.open_class_wingspan                                                 # Open class has no wingspan limitation, user can define it (default = 25m)
 
     @Attribute
     def wing_position(self):
