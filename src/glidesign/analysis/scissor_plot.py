@@ -18,19 +18,19 @@ class ScissorPlot(Base):
     #Geometry parameters
     x_ac = Input(0.25)                   #Location aerodynamic centre w.r.t. MAC [-]
     s_h = Input()                     #Horizontal tail surface [m^2]
-    s = Input(5)                    #Wing surface area  [m^2]
+    s = Input()                    #Wing surface area  [m^2]
 
-    l_h = Input(5)                     #Tail length (distance AC wing - AC horizontal tail) [m]
+    l_h = Input()                     #Tail length (distance AC wing - AC horizontal tail) [m]
     chord = Input()                   #Mean aerodynamic wing chord length [m]
 
     #Aerodynamic parameters (from aerodynamic analysis)
-    cm_ac = -0.05                 #Pitching moment coefficient around AC [-]
+    cm_ac = Input(-0.05)                 #Pitching moment coefficient around AC [-]
 
-    cl_a_min_h = 0.7              #Lift coefficient of airplane MINUS horizontal tail [-]
-    cl_h = -0.2                   #Lift coefficient of horizontal tail [-]
+    cl_a_min_h = Input(0.7)              #Lift coefficient of airplane MINUS horizontal tail [-]
+    cl_h = Input(-0.2)                   #Lift coefficient of horizontal tail [-]
 
-    cl_alpha_h = 5                #Lift curve slope coefficient of horizontal tail [/rad]
-    cl_alpha_a_min_h = 6          #Lift curve slope coefficient of airplane MINUS horizontal tail (assumed equal to cl_alpha_w) [/rad]
+    cl_alpha_h = Input(5)                #Lift curve slope coefficient of horizontal tail [/rad]
+    cl_alpha_a_min_h = Input(6)          #Lift curve slope coefficient of airplane MINUS horizontal tail (assumed equal to cl_alpha_w) [/rad]
 
     velocity = Input()                 #Velocity in the freestream [m/s]
     velocity_h = Input()               #Velocity at the horizontal tail [m/s]
@@ -53,6 +53,7 @@ class ScissorPlot(Base):
     def k_e_sweep_0(self):
         return (0.1124/self.r**2) + (0.1024/self.r) + 2
 
+    @Attribute
     def de_da_est(self):
         a = 1 + (self.r**2 / (self.r**2 + 0.7915 + 5.0734*self.m_tv**2))**0.3113
         b = 1 - np.sqrt(self.m_tv**2 / (1 + self.m_tv**2))
@@ -62,7 +63,7 @@ class ScissorPlot(Base):
 
     #Stability and Controllability limit curves
     def x_cg_stability_limit(self, sh_s):
-        return self.x_ac + ((self.cl_alpha_h / self.cl_alpha_a_min_h) * (1 - self.de_da) * sh_s * (self.l_h / self.chord) * (self.velocity_h / self.velocity) ** 2) - self.SM
+        return self.x_ac + ((self.cl_alpha_h / self.cl_alpha_a_min_h) * (1 - self.de_da_est) * sh_s * (self.l_h / self.chord) * (self.velocity_h / self.velocity) ** 2) - self.SM
 
     def x_cg_controllability_limit(self, sh_s):
         return self.x_ac - (self.cm_ac / self.cl_a_min_h) + ((self.cl_h / self.cl_a_min_h) * sh_s * (self.l_h /self.chord) * (self.velocity_h / self.velocity)**2)

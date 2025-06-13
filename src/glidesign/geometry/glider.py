@@ -106,7 +106,7 @@ class Glider(GeomBase):
 
     @Attribute
     def wing_aspect_ratio(self):
-        return self.right_wing.aspect_ratio*2
+        return self.wingspan**2 / self.wing_surface_area
 
     @Part
     def right_wing(self):
@@ -246,7 +246,7 @@ class Glider(GeomBase):
             velocity_h=55,
             wingspan = self.wingspan,
             m_tv=abs(self.hor_tail_position[-1] - self.wing_position[-1]),
-            sweep_4c= self.wing_sweep,
+            sweep_4c= np.deg2rad(self.wing_sweep),
             AR= self.wing_aspect_ratio,
         )
 
