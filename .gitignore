@@ -179,3 +179,6 @@ parapy.lic
 
 # Tutorial files
 tutorials/
+
+# Q3D files
+src/glidesign/external/Q3D/Storage/
