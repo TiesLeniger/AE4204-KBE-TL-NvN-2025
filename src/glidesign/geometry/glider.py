@@ -262,6 +262,7 @@ class Glider(GeomBase):
             L = self.fuselage_length,
             D = self.fuselage_max_diameter,
             mesh_deflection=1e-4,
+            wing_position = self.wing_position,
         )
 
     @action(button_label = "plot")

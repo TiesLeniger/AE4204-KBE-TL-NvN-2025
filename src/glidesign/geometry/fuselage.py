@@ -1,11 +1,13 @@
 # Python native imports
 import math
+from math import degrees
 
 # Python third party imports
 
 
 # ParaPy imports
-from parapy.geom import GeomBase, Point, PointCloud, Vector, RevolvedSurface, InterpolatedCurve
+from parapy.geom import *
+from parapy.geom.future import Common
 from parapy.core import Input, Attribute, Part
 from parapy.core.validate import Range, GE
 
@@ -28,6 +30,7 @@ class GliderFuselage(GeomBase):
     L = Input()                                 # fuselage length in meter
     D = Input()                                 # max diameter
     mesh_deflection = Input()
+    wing_position = Input()
 
     @Attribute
     def fr(self):
@@ -116,3 +119,27 @@ class GliderFuselage(GeomBase):
                                direction = Vector(1, 0, 0),
                                color=self.color
         )
+
+    #Make a canopy
+    @Attribute
+    def canopy_position(self):
+        return translate(self.position,
+                         'x', (self.xm - 0.08) * self.L,
+                         'z', self.D)
+
+    @Part
+    def canopy_ellipse(self):
+        return Wire([Ellipse(position = self.canopy_position,
+                            major_radius=self.wing_position[0] / 2,  # lengthwise (X-axis)
+                           minor_radius=self.D)])  # heightwise (Z-axis)
+
+    @Part
+    def canopy_spheroid(self):
+        return RevolvedSolid(center = self.canopy_position,
+                               built_from =self.canopy_ellipse,
+                               direction=Vector(1, 0, 0),
+                             color = "RED")
+
+    @Part
+    def canopy_intersection(self):
+        return IntersectedShapes(self.fuselage_surface, self.canopy_spheroid, color='red')
