@@ -149,7 +149,7 @@ class Glider(GeomBase):
                 sweep_loc = 0.25
             )],
             mesh_deflection = 1e-4,
-            af_cst_order = 5,
+            af_cst_order = 4,
             af_num_points = 40,
             af_closed_TE = True,
             position = self.hor_tail_position
