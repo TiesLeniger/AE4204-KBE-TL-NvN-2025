@@ -25,10 +25,9 @@ class GliderFuselage(GeomBase):
     si = Input(1.3, validator = GE(0))                                              # profile slope at X_i
     xi = Input(0.32, validator = Range(0.2, 1))                         # location of inflection point (non-dimensional)
     t = Input(0.2, validator = Range(0.05, 0.4))                                                                  # Trailing gap?
-    L = Input(validator = Range(4, 10))                                 # fuselage length in meter
-    D = Input(validator = Range(0.4, 1))                                 # max diameter
-
-
+    L = Input()                                 # fuselage length in meter
+    D = Input()                                 # max diameter
+    mesh_deflection = Input()
 
     @Attribute
     def fr(self):

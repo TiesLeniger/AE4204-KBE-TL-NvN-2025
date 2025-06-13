@@ -1,4 +1,6 @@
 # Python native imports
+import warnings
+from wsgiref.validate import validator
 
 # Python third party imports
 import numpy as np
@@ -7,18 +9,19 @@ import numpy as np
 from parapy.geom import GeomBase, translate, rotate, MirroredShape
 from parapy.core import Input, Attribute, Part, action
 from parapy.core.widgets import Dropdown
-from parapy.core.validate import OneOf, Range, GE
+from parapy.core.validate import OneOf, Range, GE, Validator
 
 from glidesign.geometry import lifting_surface
 # Custom imports
 from .lifting_surface import LiftingSurface, LiftingSection
 from .fuselage import GliderFuselage
 from ..analysis import ScissorPlot
+from ..core import check_value_and_warn, check_value_and_raise
 
 class Glider(GeomBase):
 
     # Top-level parameters
-    occupants: int = Input(1, validator = OneOf([1, 2]))                                    # Number of occupants of the glider, default value is 1
+    occupants: int = Input(1, widget = Dropdown([1, 2]), validator = OneOf([1, 2]))                                    # Number of occupants of the glider, default value is 1
     fai_class: str = Input("standard class", widget = Dropdown(["standard class", "15m class", "18m class", "20m class", "open class"]) ,validator = OneOf(["standard class", "15m class", "18m class", "20m class", "open class"]))     # FAI class of the glider, can be "std", "15", "18", "20" or "open"
     engine_type: str = Input("No engine", validator = OneOf([                               # Glider support engine type
         "FES", "Turbo", "Self launch", "Jet", "No engine"
@@ -65,9 +68,26 @@ class Glider(GeomBase):
     ver_tail_taper: float = Input(0.6, validator=Range(0.1, 1.0))                           # Taper ratio
 
     # Fuselage parameters
-    fuselage_length: float = Input(6.5, validator = Range(4.0, 12.0))
-    fuselage_max_diameter: float = Input(0.7, validator = Range(0.3, 1.8))
-    
+    @Input(validator = Range(0.3, 1.8))
+    def fuselage_max_diameter(self):
+        val = 0.0
+        if self.occupants == 1:
+            val = 0.7
+        if self.occupants == 2:
+            val = 1.0
+        return val
+
+    @Input(validator = Range(4.0, 10.0))
+    def fuselage_length(self):
+        val = 0.0
+        if self.occupants == 1:
+            val = 6.5
+        if self.occupants == 2:
+            val = 8.5
+        return val
+
+    #Glider Attributes and Parts
+
     @Attribute
     def fuselage_max_radius(self):
         return self.fuselage_max_diameter/2
@@ -242,9 +262,10 @@ class Glider(GeomBase):
             position = self.position, #Starts at origin
             L = self.fuselage_length,
             D = self.fuselage_max_diameter,
+            mesh_deflection=1e-4,
         )
 
-    @action
+    @action(button_label = "plot")
     def scissor_plot(self):
         plot = ScissorPlot(
             SM= self.SM,
