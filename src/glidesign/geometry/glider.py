@@ -12,7 +12,7 @@ from unicodedata import mirrored
 # Custom imports
 from .lifting_surface import LiftingSurface, LiftingSection
 from .fuselage import GliderFuselage
-from glidesign.analysis import scissor_plot
+from ..analysis import ScissorPlot
 
 class Glider(GeomBase):
 
@@ -89,6 +89,7 @@ class Glider(GeomBase):
         return translate(self.position,
                         'x', self.wing_pos_long * self.fuselage_length,
                         'z', self.wing_pos_vert * self.fuselage_max_radius)
+
 
     @Part
     def right_wing(self):
@@ -212,8 +213,7 @@ class Glider(GeomBase):
 
     @action
     def scissor_plot(self):
-        from .. import plot_scissor_plot
-        return plot_scissor_plot(self)
+        return ScissorPlot.plot_scissor_plot(self)
 
 if __name__ == '__main__':
     from parapy.gui import display
