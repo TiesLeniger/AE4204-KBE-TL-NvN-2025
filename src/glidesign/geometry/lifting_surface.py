@@ -7,7 +7,7 @@ import matlab
 
 # ParaPy imports
 from parapy.geom import GeomBase, translate, rotate, LoftedSolid, Position, Point, Orientation, Vector
-from parapy.core import Input, Attribute, Part, Base
+from parapy.core import Input, Attribute, Part, Base, action
 from parapy.core.validate import OneOf, Range, GreaterThan, Validator, GreaterThanOrEqualTo, LessThan
 
 # Custom imports
@@ -19,7 +19,6 @@ from ..external import MATLAB_Q3D_ENGINE
 class LiftingSection(GeomBase):
     """
     Serves as a parameter container for multi section LiftingSurface
-    
     """
     idx: int = Input(validator = GreaterThanOrEqualTo(0))                   # Section index, later used in LiftingSurface
     root_af: str = Input(validator = airfoil_found)                         # ID of the section root airfoil
@@ -129,32 +128,18 @@ class LiftingSurface(LoftedSolid):
     @Attribute
     def semi_span(self):
         return sum([sec.span for sec in self.sections])
-
-    @Attribute
-    def span(self):
-        return self.semi_span * 2
     
     @Attribute
     def half_area(self):
         return sum([sec.area for sec in self.sections])
-
-    @Attribute
-    def full_area(self):
-        return self.half_area * 2
     
     @Attribute
     def wing_half_aspect_ratio(self):
         return self.semi_span*self.semi_span / self.half_area
-
-    @Attribute
-    def wing_full_aspect_ratio(self):
-        return self.wing_half_aspect_ratio * 2
     
     @Attribute
     def mean_aerodynamic_chord(self):
         return sum([sec.section_mean_aerodynamic_chord*sec.span for sec in self.sections])/self.semi_span
-
-    a = wing_half_aspect_ratio
 
     @Attribute
     def q3d_planform_geom(self) -> matlab.double:
@@ -162,7 +147,7 @@ class LiftingSurface(LoftedSolid):
         planform_geom = [[root_x, root_y, root_z, self.profiles[0].chord, 0.0]]
         for i in range(1, self.num_sections):
             tip_x, tip_y, tip_z = self.profiles[i].position.location
-            twist_angle = self.profiles[i].position.orientation
+            twist_angle = self.sections[i].twist
             planform_geom.append([tip_x, tip_y, tip_z, self.profiles[i].chord, twist_angle])
         return matlab.double(planform_geom)
     
@@ -183,10 +168,10 @@ class LiftingSurface(LoftedSolid):
             eta.append(self.profiles[i].position.location.y / self.semi_span)
         return matlab.double(eta)
     
-    @Attribute
+    @action
     def q3d_data(self):
         """All inputs and results from running Q3D (MATLAB)"""
-        return MATLAB_Q3D_ENGINE.run_q3d_cst(
+        self._q3d_result = MATLAB_Q3D_ENGINE.run_q3d_cst(
             self.q3d_planform_geom,
             self.q3d_cst_airfoils,
             self.q3d_eta_airfoils,
@@ -202,12 +187,12 @@ class LiftingSurface(LoftedSolid):
     @Attribute
     def q3d_res(self) -> dict:
         """q3d results"""
-        return self.q3d_data[0]
+        return getattr(self, "_q3d_result", None)[0]
 
     @Attribute
     def q3d_ac(self) -> dict:
         """q3d inputs"""
-        return self.q3d_data[1]
+        return getattr(self, "_q3d_result", None)[1]
 
     @Attribute
     def wing_cl(self) -> float:
