@@ -11,7 +11,7 @@ from kbeutils.data import airfoils
 from parapy.core.validate import AdaptedValidator
 
 def airfoil_validator(name: str) -> bool:
-    naca4_pattern = re.compile(r'^NACA\d{4}$', re.IGNORECASE)
+    naca4_pattern = re.compile(r'^NACA\s?\d{4}$', re.IGNORECASE)
     name_upper = name.upper()
 
     if naca4_pattern.match(name_upper):
