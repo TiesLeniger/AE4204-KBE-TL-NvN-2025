@@ -16,11 +16,11 @@ def airfoil_validator(name: str) -> bool:
 
     if naca4_pattern.match(name_upper):
         return True
-    
-    input_path = os.path.isfile(os.path.join(os.getcwd(), "input", "airfoils", name + ".dat"))
-    kbeutils_path = os.path.isfile(os.path.join(airfoils.__path__[0], name + ".dat"))
-
-    return os.path.isfile(input_path) or os.path.isfile(kbeutils_path)
+    else:
+        in_input = os.path.isfile(os.path.join(os.getcwd(), "input", "airfoils", name + ".dat"))
+        in_kbeutils = os.path.isfile(os.path.join(airfoils.__path__[0], name + ".dat"))
+        found = in_input or in_kbeutils
+        return found
 
 airfoil_found = AdaptedValidator(airfoil_validator)
 
