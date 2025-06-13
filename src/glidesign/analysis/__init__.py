@@ -1,1 +1,1 @@
-from .scissor_plot import plot_scissor_plot
+from .scissor_plot import ScissorPlot

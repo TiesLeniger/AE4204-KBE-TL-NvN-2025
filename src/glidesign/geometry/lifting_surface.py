@@ -30,7 +30,7 @@ class LiftingSection(GeomBase):
     twist: float = Input(0.0)                                               # Section twist angle [deg]
     dihedral: float = Input(0.0)                                            # Section dihedral angle [deg]
     sweep: float = Input(0.0)                                               # Section sweep angle [deg]
-    sweep_loc: float = Input(0.25, validator = Range(0.0, 1.0))             # Chord normalised coordinate around which sweep is applied
+    sweep_loc: float = Input(0.25, validator = Range(0.0, 1.0))  # Chord normalised coordinate around which sweep is applied
 
     @Validator
     def validate_tip_chord(self):
