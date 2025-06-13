@@ -16,7 +16,6 @@ from glidesign.geometry import lifting_surface
 from .lifting_surface import LiftingSurface, LiftingSection
 from .fuselage import GliderFuselage
 from ..analysis import ScissorPlot
-from ..core import check_value_and_warn, check_value_and_raise
 
 class Glider(GeomBase):
 
