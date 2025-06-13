@@ -24,5 +24,5 @@ class Q3DData(Base):
         return (self.isa.density * self.velocity * self.mean_aerodynamic_chord) / self.isa.dynamic_viscosity
     
     @Attribute
-    def air_density(self):
+    def density(self):
         return self.isa.density                                     # Air density for Q3D analysis [kg/m^3]

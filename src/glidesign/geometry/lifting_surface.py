@@ -159,16 +159,16 @@ class LiftingSurface(LoftedSolid):
     def Q3D_params(self):
         return Q3DData()
     
-    @action
-    def q3d_data(self, label = "Run Q3D"):
+    @action(label = "Run Q3D")
+    def q3d_data(self):
         """All inputs and results from running Q3D (MATLAB)"""
         self.q3d_res = MATLAB_Q3D_ENGINE.run_q3d_cst(
             self.q3d_planform_geom,
             self.q3d_cst_airfoils,
             self.q3d_eta_airfoils,
             matlab.double(self.incidence_angle),
-            self.Q3D_params.mach,
-            self.Q3D_params.reynolds,
+            self.Q3D_params.mach_number,
+            self.Q3D_params.reynolds_number,
             self.Q3D_params.velocity,
             self.Q3D_params.alpha,
             self.Q3D_params.altitude,
