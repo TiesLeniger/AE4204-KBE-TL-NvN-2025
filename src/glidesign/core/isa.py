@@ -18,7 +18,7 @@ class IntStdAtmosphere(Base):
 
     @Attribute
     def temperature(self):
-        return T0 - LAPSE_0 * self.h
+        return T0 + LAPSE_0 * self.h
     
     @Attribute
     def pressure(self):
