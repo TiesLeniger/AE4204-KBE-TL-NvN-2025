@@ -7,8 +7,8 @@ import numpy as np
 from parapy.geom import GeomBase, translate, rotate, MirroredShape
 from parapy.core import Input, Attribute, Part, action
 from parapy.core.validate import OneOf, Range, GE
-from unicodedata import mirrored
 
+from glidesign.geometry import lifting_surface
 # Custom imports
 from .lifting_surface import LiftingSurface, LiftingSection
 from .fuselage import GliderFuselage
@@ -90,6 +90,23 @@ class Glider(GeomBase):
                         'x', self.wing_pos_long * self.fuselage_length,
                         'z', self.wing_pos_vert * self.fuselage_max_radius)
 
+    @Attribute
+    def wing_surface_area(self):
+        return self.right_wing.area * 2
+
+    @Attribute
+    def hor_tail_surface_area(self):
+        return self.right_hor_tail.area * 2
+
+    @Attribute
+    def tail_length(self):
+        quarter_chord_wing = 0.25 * self.right_wing.mean_aerodynamic_chord
+        quarter_chord_hor_tail = 0.25 * self.right_hor_tail.mean_aerodynamic_chord
+        return (self.hor_tail_position[0] + quarter_chord_hor_tail) - (self.wing_position[0] + quarter_chord_wing)
+
+    @Attribute
+    def wing_aspect_ratio(self):
+        return self.right_wing.aspect_ratio*2
 
     @Part
     def right_wing(self):
@@ -213,7 +230,30 @@ class Glider(GeomBase):
 
     @action
     def scissor_plot(self):
-        return ScissorPlot.plot_scissor_plot(self)
+        plot = ScissorPlot(
+            SM= 0.05,
+            x_ac= 0.25,
+            s_h= self.hor_tail_surface_area,
+            s= self.wing_surface_area,
+            l_h= self.tail_length,
+            chord= self.right_wing.mean_aerodynamic_chord,
+            cm_ac=-0.05,
+            cl_a_min_h=0.7,
+            cl_h=-0.2,
+            cl_alpha_h=5,
+            cl_alpha_a_min_h=6,
+            velocity=55,
+            velocity_h=55,
+            wingspan = self.wingspan,
+            m_tv=abs(self.hor_tail_position[-1] - self.wing_position[-1]),
+            sweep_4c= self.wing_sweep,
+            AR= self.wing_aspect_ratio,
+        )
+
+        # Plot
+        plot.plot_scissor_plot()
+
+        return plot
 
 if __name__ == '__main__':
     from parapy.gui import display
