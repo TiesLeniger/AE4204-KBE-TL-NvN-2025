@@ -30,6 +30,7 @@ class Glider(GeomBase):
         widget = Dropdown(["standard class", "15m class", "18m class", "20m class", "open class"]),
         validator = OneOf(["standard class", "15m class", "18m class", "20m class", "open class"]))     
     open_class_wingspan = Input(25, validator = GE(18))                                                     #In case of open class glider
+    cl_cr: float = Input(0.3, validator = GreaterThan(0.0))
 
     # Main wing parameters
     wing_airfoil_id: str = Input('nlf1-0015', validator = airfoil_found)                    # Can be NACA 4- or 5-digit or a string referencing a '.dat' file with coordinates
@@ -402,6 +403,29 @@ class Glider(GeomBase):
                                  reference_point=self.position.point,
                                  surfaces=self.avl_surfaces,
                                  mach= 0.0)
+    
+    @Attribute
+    def avl_settings(self):
+        return {'alpha': avl.Parameter(name='alpha',
+                                         setting='CL',
+                                         value=self.cl_cr)}
+    
+    @Part
+    def avl_case(self):
+        """avl case definition using the avl_settings dictionary defined above"""
+        return avl.Case(name='fixed_cl',  # name _must_ correspond to type of case
+                        settings=self.avl_settings)
+    
+    @Part
+    def avl_analysis(self):
+        return avl.Interface(configuration=self.avl_configuration,
+                             # note: AVL always expects a list of cases!
+                             cases=[self.avl_case])
+    
+    @Attribute
+    def full_aircraft_moment_coefficient(self):
+        return {result['Name']: result['Totals']['CMtot']
+                for case_name, result in self.avl_analysis.results.items()}
 
 if __name__ == '__main__':
     from parapy.gui import display
