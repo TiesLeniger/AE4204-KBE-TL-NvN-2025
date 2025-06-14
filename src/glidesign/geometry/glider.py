@@ -7,58 +7,55 @@ import numpy as np
 from parapy.geom import GeomBase, translate, rotate, MirroredShape
 from parapy.core import Input, Attribute, Part, action
 from parapy.core.widgets import Dropdown
-from parapy.core.validate import OneOf, Range, GE
+from parapy.core.validate import OneOf, Range, GE, GreaterThan
 
 from glidesign.geometry import lifting_surface
 # Custom imports
 from .lifting_surface import LiftingSurface, LiftingSection
 from .fuselage import GliderFuselage
 from ..analysis import ScissorPlot
+from ..core import airfoil_found
 
 class Glider(GeomBase):
 
     # Top-level parameters
     occupants: int = Input(1, validator = OneOf([1, 2]))                                    # Number of occupants of the glider, default value is 1
     fai_class: str = Input("standard class", widget = Dropdown(["standard class", "15m class", "18m class", "20m class", "open class"]) ,validator = OneOf(["standard class", "15m class", "18m class", "20m class", "open class"]))     # FAI class of the glider, can be "std", "15", "18", "20" or "open"
-    engine_type: str = Input("No engine", validator = OneOf([                               # Glider support engine type
-        "FES", "Turbo", "Self launch", "Jet", "No engine"
-    ]))
     open_class_wingspan = Input(25, validator = GE(18))                                     #In case of open class glider
 
     # Main wing parameters
-    wing_airfoil_id: str = Input()       # TODO: add validator                              # Can be NACA 4- or 5-digit or a string referencing a '.dat' file with coordinates
+    wing_airfoil_id: str = Input('NACA 0010', validator = airfoil_found)                    # Can be NACA 4- or 5-digit or a string referencing a '.dat' file with coordinates
     wing_twist: float = Input(-2.0, validator = Range(-5.0, 5.0))                           # Twist of tip w.r.t root in [deg]
     wing_dihedral: float = Input(3.0, validator = Range(-5.0, 5.0))                         # Wing dihedral angle [deg]
     wing_sweep: float = Input(0.0, validator = Range(-10.0, 10.0))                          # Quarter chord sweep angle [deg]
     wing_incidence: float = Input(0.0, validator = Range(-5.0, 5.0))                        # Wing Incidence angle [deg]
     wing_taper: float = Input(0.5, validator = Range(0.1, 1.0))                             # Taper ratio
-    flap_type: str = Input("No flaps", widget = Dropdown(["No flaps", "Flaperon", "Discrete flap"]), validator = OneOf([
-        "No flaps", "Flaperon", "Discrete flap"]))
-    wing_pos_long: float = Input(0.3, validator = Range(0, 1))                              #Longitudinal wing position as fraction fuselage length
-    wing_pos_vert: float = Input(0.2, validator = Range(0, 1))                              #Vertical wing position as fraction max fus radius
+    wing_pos_long: float = Input(0.3, validator = Range(0.0, 1.0))
+    wing_pos_vert: float = Input(0.2, validator = Range(0.0, 1.0))
 
     # Winglet parameters
-    winglet_length: float = Input(0.0, validator = Range(0.0, 1.0))                         # Winglet length in [m]
-    winglet_cant: float = Input(0.0, validator = Range(0.0, 90.0))                          # Cant angle of the winglet [deg] (90 deg means wing extension)
-    winglet_toe: float = Input(0.0, Range(-5.0, 5.0))                                       # Toe angle of the winglet [deg]
-    winglet_sweep: float = Input(0.0, Range(0.0, 30.0))                                     # Leading edge sweep of the winglet [deg]
-    winglet_airfoil_id: str = Input()      # TODO: add validator                            # Airfoil profile of the winglet
-    winglet_stagger: float = Input(0.0, Range(0.0, 0.8))                                    # Backwards shift of winglet LE w.r.t LE of the wingtip as fraction of the tipchord
-    winglet_taper: float = Input(0.0, Range(0.1, 1.0))                                      # Winglet taper ratio
+    winglet: bool = Input(True)                                                            # Boolean for adding a winglet
+    winglet_length: float = Input(0.3, validator = Range(0.0, 1.0))                         # Winglet length in [m]
+    winglet_cant: float = Input(5.0, validator = Range(0.0, 90.0))                          # Cant angle of the winglet [deg] (90 deg means wing extension)
+    winglet_toe: float = Input(0.5, Range(-5.0, 5.0))                                       # Toe angle of the winglet [deg]
+    winglet_sweep: float = Input(30.0, Range(0.0, 30.0))                                     # Leading edge sweep of the winglet [deg]
+    winglet_tip_af: str = Input('NACA 0010', validator = airfoil_found)                     # Airfoil profile of the winglet
+    winglet_taper: float = Input(0.5, Range(0.1, 1.0))                                      # Winglet taper ratio
 
     # Horizontal tail parameters
-    hor_tail_airfoil_id: float = Input()        # TODO: add validator                       # Horizontal tail airfoil profile
+    hor_tail_airfoil_id: float = Input('NACA 0010', validator = airfoil_found)              # Horizontal tail airfoil profile
     hor_tail_span: float = Input(1, validator = Range(0.3, 3))                              # Horizontal tail span
-    hor_tail_pos_long: float = Input(1, validator = Range(0.5, 1.3))                        #Horizontal tail position as fraction of fuselage length
+    hor_tail_pos_long: float = Input(1, validator = Range(0.5, 1.3))                        # Horizontal tail position as fraction of fuselage length
     hor_tail_twist: float = Input(0, validator=Range(-5.0, 5.0))                            # Twist of tip w.r.t root in [deg]
     hor_tail_dihedral: float = Input(0.0, validator=Range(-5.0, 5.0))                       # Dihedral angle [deg]
     hor_tail_sweep: float = Input(5, validator=Range(-5.0, 5.0))                            # Quarter chord sweep angle [deg]
     hor_tail_incidence: float = Input(2, validator=Range(-5.0, 5.0))                        # Incidence angle [deg]
     hor_tail_taper: float = Input(0.5, validator=Range(0.1, 1.0))                           # Taper ratio
-    SM: float = Input(0.1, validator = Range(0, 0.2))                                   #Stability margin
+    SM: float = Input(0.1, validator = Range(0, 0.2))                                       # Stability margin
 
     # Vertical tail parameters
-    ver_tail_airfoil_id: float = Input()        # TODO: add validator                       # Vertical tail airfoil profile
+    ver_tail_airfoil_id: float = Input(validator = airfoil_found)                           # Vertical tail airfoil profile
+    ver_tail_root_chord: float = Input(0.5, validator = GreaterThan(0.0))                   # Vertical tail root chord
     ver_tail_pos_long: float = Input(1, validator=Range(0.5,1.3))                           # Vertical tail position as fraction of fuselage length
     ver_tail_height: float = Input(1.2, validator= Range(0.2, 2))                           # Height of vertical tailplane in meters
     ver_tail_sweep: float = Input(5, validator=Range(-5.0, 5.0))                            # Quarter chord sweep angle [deg]
@@ -128,24 +125,29 @@ class Glider(GeomBase):
     def right_wing(self):
         return LiftingSurface(
             name = "Main wing",
-            incidence_angle = 0.0,
-            sections = [LiftingSection(
-                idx = 0,
-                root_af = "nlf1-0015",
-                tip_af = "nlf1-0015",
-                root_chord = 0.5,
-                tip_chord = 0.2,
-                span = self.wingspan / 2,
-                twist = self.wing_twist,
-                dihedral = self.wing_dihedral,
-                sweep = self.wing_sweep,
-                sweep_loc = 0.25
-            )],
+            root_af = "nlf1-0015",
+            tip_af = "nlf1-0015",
+            root_chord = 0.5,
+            taper = 0.5,
+            span = 7.5,
+            twist = -2.0,
+            sweep = 2.0,
+            sweep_loc = 0.25,
+            dihedral = 2.0,
+            incidence_angle = 1.0,
+            num_sections = 1,
             mesh_deflection = 1e-4,
             af_cst_order = 5,
             af_num_points = 40,
             af_closed_TE = True,
-            position = self.wing_position
+            position = self.wing_position,
+            winglet = self.winglet,
+            winglet_length = self.winglet_length,
+            winglet_cant = self.winglet_cant,
+            winglet_toe = self.winglet_toe,
+            winglet_sweep = self.winglet_sweep,
+            winglet_tip_af = self.winglet_tip_af,
+            winglet_taper = self.winglet_taper
         )
 
     @Part
@@ -167,25 +169,25 @@ class Glider(GeomBase):
     @Part
     def right_hor_tail(self):
         return LiftingSurface(
-            name = "Horizontal Tail",
-            incidence_angle = 0.0,
-            sections = [LiftingSection(
-                idx = 0,
-                root_af = "nlf1-0015",
-                tip_af = "nlf1-0015",
-                root_chord = 0.5,
-                tip_chord = 0.3,
-                span = self.hor_tail_span,
-                twist = self.hor_tail_twist,
-                dihedral = self.hor_tail_dihedral,
-                sweep = self.hor_tail_sweep,
-                sweep_loc = 0.25
-            )],
+            name = "Horizontal tail",
+            root_af = self.hor_tail_airfoil_id,
+            tip_af = self.hor_tail_airfoil_id,
+            root_chord = self.vert_tail.profiles[-1].chord + 0.1,
+            taper = self.hor_tail_taper,
+            span = self.hor_tail_span,
+            twist = self.hor_tail_twist,
+            sweep = self.hor_tail_sweep,
+            sweep_loc = 0.25,
+            dihedral = self.hor_tail_dihedral,
+            incidence_angle = self.hor_tail_incidence,
+            num_sections = 1,
             mesh_deflection = 1e-4,
-            af_cst_order = 4,
+            af_cst_order = 5,
             af_num_points = 40,
             af_closed_TE = True,
-            position = self.hor_tail_position
+            position = self.hor_tail_position,
+            winglet = False,
+            winglet_tip_af = 'NACA 0010'
         )
 
     @Part
@@ -207,34 +209,26 @@ class Glider(GeomBase):
     @Part
     def vert_tail(self):
         return LiftingSurface(
-            name = "Horizontal Tail",
+            name = "Vertical tail",
+            root_af = "NACA 0012",
+            tip_af = "NACA 0012",
+            root_chord = self.ver_tail_root_chord,
+            taper = self.ver_tail_taper,
+            span = self.ver_tail_height,
+            twist = 0.0,
+            sweep = self.ver_tail_sweep,
+            sweep_loc = 0.0,
+            dihedral = 0.0,
             incidence_angle = 0.0,
-            sections = [LiftingSection(
-                idx = 0,
-                root_af = "nlf1-0015",
-                tip_af = "nlf1-0015",
-                root_chord = 0.8,
-                tip_chord = 0.5,
-                span = self.ver_tail_height,
-                twist = 0.0,
-                dihedral = 0.0,
-                sweep = self.ver_tail_sweep,
-                sweep_loc = 0.25
-            )],
+            num_sections = 1,
             mesh_deflection = 1e-4,
             af_cst_order = 5,
             af_num_points = 40,
             af_closed_TE = True,
-            position = self.ver_tail_position
+            position = self.ver_tail_position,
+            winglet = False,
+            winglet_tip_af = 'NACA 0010'
         )
-
-    # @Part
-    # def winglet(self):
-    #     return LiftingSurface(
-    #         position = self.winglet_position,
-    #         span = self.winglet_length
-    #         #TODO: add other winglet parameters
-    #     )
 
     @Part
     def fuselage(self):
