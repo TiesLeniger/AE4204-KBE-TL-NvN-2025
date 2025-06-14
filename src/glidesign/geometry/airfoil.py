@@ -11,6 +11,7 @@ from parapy.core.validate import OneOf, Range, GreaterThan
 from parapy.gui import display
 from kbeutils.data import airfoils
 from kbeutils.geom import Naca4AirfoilCurve, Naca5AirfoilCurve
+import kbeutils.avl as avl
 
 # Self-built imports
 from ..core import airfoil_found, NACA4_PATTERN, NACA5_PATTERN
@@ -91,3 +92,9 @@ class Airfoil(FittedCurve):
     @Part
     def frame(self):
         return Frame(pos = self.position, hidden = False)
+    
+    @Part
+    def avl_section(self):
+        return avl.SectionFromCurve(
+            curve_in = self
+        )

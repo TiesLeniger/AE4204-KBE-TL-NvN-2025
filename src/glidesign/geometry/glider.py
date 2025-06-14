@@ -11,6 +11,7 @@ from parapy.geom import GeomBase, translate, rotate, MirroredShape
 from parapy.core import Input, Attribute, Part, action
 from parapy.core.widgets import Dropdown
 from parapy.core.validate import OneOf, Range, GE, Validator, GreaterThan
+import kbeutils.avl as avl
 
 from glidesign.geometry import lifting_surface
 # Custom imports
@@ -183,6 +184,18 @@ class Glider(GeomBase):
             vector2 = self.position.Vx
             #mesh_deflection=self.mesh_deflection
         )
+    
+    @Attribute(in_tree = True)
+    def main_wing_avl_surface(self):
+        return avl.Surface(
+            name = "Main Wing",
+            n_chordwise = Input(12, validator = GreaterThan(0)),
+            chord_spacing = avl.Spacing.cosine,
+            n_spanwise = Input(24, validator = GreaterThan(0)),
+            span_spacing = avl.Spacing.cosine,
+            y_duplicate = self.right_wing.position.point[1],
+            sections = [profile.avl_section for profile in self.right_wing.profiles]   
+        )
 
     @Attribute
     def hor_tail_position(self):
@@ -223,6 +236,18 @@ class Glider(GeomBase):
             vector2 = self.position.Vx
             #mesh_deflection=self.mesh_deflection
         )
+    
+    @Attribute(in_tree = True)
+    def horizontal_tail_avl_surface(self):
+        return avl.Surface(
+            name = "Horizontal tail",
+            n_chordwise = Input(8, validator = GreaterThan(0)),
+            chord_spacing = avl.Spacing.cosine,
+            n_spanwise = Input(16, validator = GreaterThan(0)),
+            span_spacing = avl.Spacing.cosine,
+            y_duplicate = self.right_hor_tail.position.point[1],
+            sections = [profile.avl_section for profile in self.right_hor_tail.profiles]   
+        )
 
     @Attribute
     def ver_tail_position(self):
@@ -252,6 +277,18 @@ class Glider(GeomBase):
             position = self.ver_tail_position,
             has_winglet = False,
             winglet_tip_af = 'NACA 0010'
+        )
+    
+    @Attribute(in_tree = True)
+    def vertical_tail_avl_surface(self):
+        return avl.Surface(
+            name = "Vertical tail",
+            n_chordwise = Input(8, validator = GreaterThan(0)),
+            chord_spacing = avl.Spacing.cosine,
+            n_spanwise = Input(12, validator = GreaterThan(0)),
+            span_spacing = avl.Spacing.cosine,
+            y_duplicate = None,
+            sections = [profile.avl_section for profile in self.vert_tail.profiles]   
         )
 
     @Part
@@ -350,6 +387,21 @@ class Glider(GeomBase):
             return result["CMwing"]
         else:
             return "Evaluate aerodynamics to view property"
+        
+    @Attribute(in_tree = True)
+    def avl_surfaces(self):
+        return [self.main_wing_avl_surface, self.horizontal_tail_avl_surface, self.vertical_tail_avl_surface]
+    
+    @Part
+    def avl_configuration(self):
+        """Configurations are made separately for each Mach number that is provided."""
+        return avl.Configuration(name='cruise analysis',
+                                 reference_area=self.wing_surface_area,
+                                 reference_span=self.wingspan,
+                                 reference_chord=self.right_wing.mean_aerodynamic_chord,
+                                 reference_point=self.position.point,
+                                 surfaces=self.avl_surfaces,
+                                 mach= 0.0)
 
 if __name__ == '__main__':
     from parapy.gui import display
