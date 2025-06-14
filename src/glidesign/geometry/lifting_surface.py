@@ -8,7 +8,7 @@ import matlab
 
 # ParaPy imports
 from parapy.geom import GeomBase, translate, rotate, LoftedSolid, Position, Point, Orientation, Vector
-from parapy.core import Input, Attribute, Part, Base, action
+from parapy.core import Input, Attribute, Part, Base, action, PartList
 from parapy.core.validate import OneOf, Range, GreaterThan, Validator, GreaterThanOrEqualTo, LessThan
 
 # Custom imports
@@ -22,25 +22,60 @@ class LiftingSection(GeomBase):
     Serves as a parameter container for multi section LiftingSurface
     """
     idx: int = Input(validator = GreaterThanOrEqualTo(0))                   # Section index, later used in LiftingSurface
-    root_af: str = Input(validator = airfoil_found)                         # ID of the section root airfoil
-    tip_af: str = Input(validator = airfoil_found)                          # ID of the section tip airfoil
+    root_af_id: str = Input(validator = airfoil_found)                      # ID of the section root airfoil
+    tip_af_id: str = Input(validator = airfoil_found)                       # ID of the section tip airfoil
     root_chord: float = Input(0.5, validator = GreaterThan(0.0))            # Root chord of the section [m]
     tip_chord: float = Input(0.2, validator = GreaterThan(0.0))             # Tip chord of the section [m]              
     span: float = Input(7.3, validator = GreaterThan(0.0))                  # Section span [m]
     twist: float = Input(0.0)                                               # Section twist angle [deg]
     dihedral: float = Input(0.0)                                            # Section dihedral angle [deg]
     sweep: float = Input(0.0)                                               # Section sweep angle [deg]
-    sweep_loc: float = Input(0.25, validator = Range(0.0, 1.0))  # Chord normalised coordinate around which sweep is applied
+    sweep_loc: float = Input(0.25, validator = Range(0.0, 1.0))             # Chord normalised coordinate around which sweep is applied
+    af_cst_order: int = Input(4, validator = GreaterThan(0))                # CST order for the airfoils
+    af_num_points: int = Input(200, validator = GreaterThan(0))             # Number of points on the airfoils (for NACA generation)
+    mesh_deflection: float = Input(1e-4, validator = GreaterThan(0.0))      # mesh deflection parameter for lofted surface
 
     @Validator
     def validate_tip_chord(self):
         if self.tip_chord >= self.root_chord:
             raise ValueError(f"Tip chord must be smaller than root chord")
         return True
-
+    
+    @Part
+    def root_airfoil(self):
+        return Airfoil(
+            airfoil_name = self.root_af_id,
+            chord = self.root_chord,
+            cst_poly_order = self.af_cstorder,
+            num_points = self.af_numpoints,
+            mesh_deflection = self.mesh_deflection,
+            position = self.position
+        )
+    
+    @Attribute
+    def tip_position(self):
+        tip_position = rotate(self.position, "y", self.twist, deg = True)
+        tip_position = translate(tip_position,
+                            "x", self.span * np.tan(np.deg2rad(self.sweep)) + (self.root_chord - self.tip_chord) * self.sweep_loc,
+                            "y", self.span,
+                            "z", self.span * np.tan(np.deg2rad(self.dihedral))
+                        )
+        return tip_position
+    
+    @Part
+    def tip_airfoil(self):
+        return Airfoil(
+            airfoil_name = self.tip_af_id,
+            chord = self.tip_chord,
+            cst_poly_order = self.af_cstorder,
+            num_points = self.af_numpoints,
+            mesh_deflection = self.mesh_deflection,
+            position = self.tip_position
+        )
+        
     @Attribute
     def taper_ratio(self):
-        return self.tip_chord/self.root_chord
+        return self.tip_chord / self.root_chord
     
     @Attribute
     def area(self):
@@ -69,17 +104,13 @@ class LiftingSurface(LoftedSolid):
     af_closed_TE: bool = Input(True)                                    # Closed trailing edges for surface airfoils
     ruled: bool = Input(True)
 
-    winglet: bool = Input(False)                                        # Boolean for adding a winglet
-    winglet_length: float = Input(0., validator = Range(0.0, 1.0, incl_min = False))     # Winglet length in [m]
-    winglet_cant: float = Input(5.0, validator = Range(0.0, 90.0))      # Cant angle of the winglet [deg] (90 deg means wing extension)
-    winglet_toe: float = Input(1.0, Range(-5.0, 5.0))                   # Toe angle of the winglet [deg]
-    winglet_sweep: float = Input(30.0, Range(0.0, 30.0))                 # Leading edge sweep of the winglet [deg]
-    winglet_tip_af: str = Input('NACA0010', validator = airfoil_found)              # Airfoil profile of the winglet
-    winglet_taper: float = Input(0.5, Range(0.1, 1.0))                  # Winglet taper ratio
-
-    @Input(validator = GreaterThan(0.0))
-    def span(self):
-        return sum([section.span for section in self.sections])
+    has_winglet: bool = Input(False)                                                    # Boolean for adding a winglet
+    winglet_length: float = Input(0.0, validator = Range(0.0, 1.0, incl_min = False))   # Winglet length in [m]
+    winglet_cant: float = Input(5.0, validator = Range(0.0, 90.0))                      # Cant angle of the winglet [deg] (90 deg means wing extension)
+    winglet_toe: float = Input(1.0, Range(-5.0, 5.0))                                   # Toe angle of the winglet [deg]
+    winglet_sweep: float = Input(30.0, Range(0.0, 50.0))                                # Leading edge sweep of the winglet [deg]
+    winglet_tip_af: str = Input('NACA0010', validator = airfoil_found)                  # Airfoil profile of the winglet
+    winglet_taper: float = Input(0.5, Range(0.1, 1.0))                                  # Winglet taper ratio
     
     @Input(validator = Range(1, 10))
     def num_sections(self):
@@ -99,60 +130,57 @@ class LiftingSurface(LoftedSolid):
     def sections(self):
         sections = [LiftingSection(
             idx = i,
-            root_af = self.root_af,
-            tip_af = self.tip_af,
+            root_af_id = self.root_af,
+            tip_af_id = self.tip_af,
             root_chord = self.root_chord,
             tip_chord = self.root_chord * self.taper**(1/self.num_sections),
             span = self.span / self.num_sections,
             twist = self.twist / self.num_sections,
             dihedral = self.dihedral,
             sweep = self.sweep,
-            sweep_loc = self.sweep_loc
+            sweep_loc = self.sweep_loc,
+            af_cst_order = self.af_cst_order,
+            af_num_points = self.af_num_points,
+            mesh_deflection = self.mesh_deflection,
+            position = self.position if i == 0 else sections[i-1].tip_position
             ) for i in range(self.num_sections)]
-        if self.winglet:
-            winglet_root_af = sections[-1].tip_af
-            winglet_root_chord = sections[-1].tip_chord
-            winglet_dihedral = 90 - self.winglet_cant
-            sections.append(LiftingSection(
-                idx = self.num_sections,
-                root_af = winglet_root_af,
-                tip_af = self.winglet_tip_af,
-                root_chord = winglet_root_chord,
-                tip_chord = winglet_root_chord * self.winglet_taper,
-                span = self.winglet_length / np.sin(np.deg2rad(winglet_dihedral)),
-                twist = self.winglet_toe,
-                dihedral = winglet_dihedral,
-                sweep = self.winglet_sweep,
-                sweep_loc = 0.0
-            ))
         return sections
 
-    @Attribute
+    @Part
     def profiles(self):
-        profile_list = [Airfoil(
-            airfoil_name = self.sections[0].root_af,
-            chord = self.sections[0].root_chord,
-            cst_poly_order = self.af_cst_order,
-            num_points = self.af_num_points,
-            position = rotate(self.position, 'y', self.incidence_angle, deg=True)
-        )]
+        profiles = [self.sections[0].root_airfoil]
         for i in range(self.num_sections):
-            next_pos = profile_list[-1].position
-            next_pos = rotate(next_pos, "y", self.sections[i].twist, deg = True)
-            next_pos = translate(next_pos,
-                                "x", self.sections[i].span * np.tan(np.deg2rad(self.sections[i].sweep)) + 
-                                (self.sections[i].root_chord - self.sections[i].tip_chord) * self.sections[i].sweep_loc,
-                                "y", self.sections[i].span,
-                                "z", self.sections[i].span * np.tan(np.deg2rad(self.sections[i].dihedral))
-                            )
-            profile_list.append(Airfoil(
-                airfoil_name = self.sections[i].tip_af,
-                chord = self.sections[i].tip_chord,
-                cst_poly_order = self.af_cst_order,
-                num_points = self.af_num_points,
-                position = next_pos
-            ))
-        return profile_list
+            profiles.append(self.sections[i].tip_airfoil)
+
+    @Part
+    def lofted_solid(self):
+        return LoftedSolid(profiles = self.profiles, hidden = False)
+    
+    @Part
+    def winglet(self):
+        if self.has_winglet:
+            winglet_pos = self.profiles[-1].position
+            winglet_pos = rotate(winglet_pos, 
+                                 "x", 90 - self.winglet_cant,
+                                 "z", self.winglet_toe)
+            winglet = LiftingSection(
+                idx = self.num_sections,
+                root_af_id = self.sections[-1].tip_af_id,
+                root_chord = self.sections[-1].tip_chord,
+                span = self.winglet_length,
+                twist = 0.0,
+                dihedral = 0.0,
+                sweep = self.winglet_sweep,
+                sweep_loc = 0.0,
+                af_cst_order = self.af_cst_order,
+                af_num_points = self.af_num_points,
+                mesh_deflection = self.mesh_deflection,
+                position = winglet_pos
+            )
+            self.sections.append(winglet)
+            return winglet
+        else:
+            return None
 
     @Attribute
     def semi_span(self):
