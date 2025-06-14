@@ -144,17 +144,20 @@ class LiftingSurface(LoftedSolid):
             position = self.position if child.index == 0 else child.previous.tip_position
             )
     
-    @Part
-    def winglet(self):
+    @Attribute
+    def winglet_pos(self):
         winglet_pos = rotate(self.sections[-1].tip_position,
                                 "x", 90 - self.winglet_cant,
                                 deg = True)
         winglet_pos = rotate(winglet_pos,
                                 "z", self.winglet_toe,
                                 deg = True)
+        return winglet_pos
+    
+    @Part
+    def winglet(self):
         return LiftingSection(
             suppress = not self.has_winglet,
-            idx = self.num_sections,
             root_af_id = self.sections[-1].tip_af_id,
             tip_af_id = self.winglet_tip_af,
             root_chord = self.sections[-1].tip_chord,
@@ -167,8 +170,8 @@ class LiftingSurface(LoftedSolid):
             af_cst_order = self.af_cst_order,
             af_num_points = self.af_num_points,
             mesh_deflection = self.mesh_deflection,
-            position = winglet_pos
-        )   
+            position = self.winglet_pos
+        )
 
     @Attribute
     def profiles(self):
@@ -200,7 +203,7 @@ class LiftingSurface(LoftedSolid):
         planform_geom = []
         for i in range(len(self.profiles)):
             x, y, z = self.profiles[i].position.location
-            twist = 0.0 if i == 0 else self.sections[i-1].twist
+            twist = 0.0 if (i == 0 or i-1 >= len(self.sections)) else self.sections[i-1].twist
             planform_geom.append([x, y, z, self.profiles[i].chord, twist])
         return matlab.double(planform_geom)
     
