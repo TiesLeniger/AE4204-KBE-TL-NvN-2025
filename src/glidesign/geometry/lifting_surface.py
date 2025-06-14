@@ -8,7 +8,7 @@ import matlab
 
 # ParaPy imports
 from parapy.geom import GeomBase, translate, rotate, LoftedSolid, Position, Point, Orientation, Vector
-from parapy.core import Input, Attribute, Part, Base, action, PartList
+from parapy.core import Input, Attribute, Part, Base, action
 from parapy.core.validate import OneOf, Range, GreaterThan, Validator, GreaterThanOrEqualTo, LessThan
 
 # Custom imports
@@ -46,8 +46,8 @@ class LiftingSection(GeomBase):
         return Airfoil(
             airfoil_name = self.root_af_id,
             chord = self.root_chord,
-            cst_poly_order = self.af_cstorder,
-            num_points = self.af_numpoints,
+            cst_poly_order = self.af_cst_order,
+            num_points = self.af_num_points,
             mesh_deflection = self.mesh_deflection,
             position = self.position
         )
@@ -67,8 +67,8 @@ class LiftingSection(GeomBase):
         return Airfoil(
             airfoil_name = self.tip_af_id,
             chord = self.tip_chord,
-            cst_poly_order = self.af_cstorder,
-            num_points = self.af_numpoints,
+            cst_poly_order = self.af_cst_order,
+            num_points = self.af_num_points,
             mesh_deflection = self.mesh_deflection,
             position = self.tip_position
         )
@@ -128,7 +128,9 @@ class LiftingSurface(LoftedSolid):
     
     @Attribute
     def sections(self):
-        sections = [LiftingSection(
+        sections = []
+        for i in range(self.num_sections):
+            sections.append(LiftingSection(
             idx = i,
             root_af_id = self.root_af,
             tip_af_id = self.tip_af,
@@ -143,30 +145,20 @@ class LiftingSurface(LoftedSolid):
             af_num_points = self.af_num_points,
             mesh_deflection = self.mesh_deflection,
             position = self.position if i == 0 else sections[i-1].tip_position
-            ) for i in range(self.num_sections)]
-        return sections
-
-    @Part
-    def profiles(self):
-        profiles = [self.sections[0].root_airfoil]
-        for i in range(self.num_sections):
-            profiles.append(self.sections[i].tip_airfoil)
-
-    @Part
-    def lofted_solid(self):
-        return LoftedSolid(profiles = self.profiles, hidden = False)
-    
-    @Part
-    def winglet(self):
+            ))
         if self.has_winglet:
-            winglet_pos = self.profiles[-1].position
-            winglet_pos = rotate(winglet_pos, 
+            winglet_pos = rotate(sections[-1].tip_position,
                                  "x", 90 - self.winglet_cant,
-                                 "z", self.winglet_toe)
+                                 deg = True)
+            winglet_pos = rotate(winglet_pos,
+                                 "z", self.winglet_toe,
+                                 deg = True)
             winglet = LiftingSection(
                 idx = self.num_sections,
-                root_af_id = self.sections[-1].tip_af_id,
-                root_chord = self.sections[-1].tip_chord,
+                root_af_id = sections[-1].tip_af_id,
+                tip_af_id = self.winglet_tip_af,
+                root_chord = sections[-1].tip_chord,
+                tip_chord = self.winglet_taper * sections[-1].tip_chord,
                 span = self.winglet_length,
                 twist = 0.0,
                 dihedral = 0.0,
@@ -177,14 +169,19 @@ class LiftingSurface(LoftedSolid):
                 mesh_deflection = self.mesh_deflection,
                 position = winglet_pos
             )
-            self.sections.append(winglet)
-            return winglet
-        else:
-            return None
+            sections.append(winglet)
+        return sections
+
+    @Attribute
+    def profiles(self):
+        profiles = [self.sections[0].root_airfoil]
+        for i in range(self.num_sections + 1 if self.has_winglet else self.num_sections):
+            profiles.append(self.sections[i].tip_airfoil)
+        return profiles
 
     @Attribute
     def semi_span(self):
-        return sum([sec.span for sec in self.sections])
+        return abs(self.sections[-1].tip_airfoil.position.y - self.sections[0].root_airfoil.position.y)
     
     @Attribute
     def half_area(self):
@@ -220,7 +217,7 @@ class LiftingSurface(LoftedSolid):
     @Attribute
     def q3d_eta_airfoils(self) -> matlab.double:
         eta = [[0.0]]
-        for i in range(1, self.num_sections + 1):
+        for i in range(1, len(self.profiles)):
             eta.append([self.profiles[i].position.location.y / self.semi_span])
         return matlab.double(eta)
 
