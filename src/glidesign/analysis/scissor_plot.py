@@ -87,7 +87,8 @@ class ScissorPlot(Base):
         return self.s_h / self.s
 
     def convert_cog_abs_to_rel_mac(self, x_cog_abs):
-        return x_cog_abs + self.wing_x_location
+        #make leading edge (should technically be LE of MAC(adjust in glider.py)) the datum
+        return x_cog_abs - self.wing_x_location
 
     #Plot the scissor plot
     def plot_scissor_plot(self):
