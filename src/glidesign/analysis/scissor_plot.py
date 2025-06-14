@@ -15,6 +15,14 @@ class ScissorPlot(Base):
     #Designer input
     SM = Input()                     #Stability margin [-]
 
+    #Center of gravity inputs
+    current_x_cog = Input()
+    fwd_limit_x_cog = Input()         #maximum allowed pilot mass
+    bwd_limit_x_cog = Input()         #minimum allowed pilot mass
+
+    #Wing location
+    wing_x_location = Input()
+
     #Geometry parameters
     x_ac = Input(0.25)                   #Location aerodynamic centre w.r.t. MAC [-]
     s_h = Input()                     #Horizontal tail surface [m^2]
@@ -78,12 +86,18 @@ class ScissorPlot(Base):
     def current_sh_s(self):
         return self.s_h / self.s
 
+    def convert_cog_abs_to_rel_mac(self, x_cog_abs):
+        return x_cog_abs + self.wing_x_location
+
     #Plot the scissor plot
     def plot_scissor_plot(self):
         plt.figure(figsize=(10,6))
         plt.plot(self.x_cg_stability_limit(self.s_h_s_range), self.s_h_s_range, label='Stability Limit', color='blue')
         plt.plot(self.x_cg_stability_limit_no_sm(self.s_h_s_range), self.s_h_s_range, label='Stability Limit (no margin)', linestyle = '--', color='blue')
         plt.plot(self.x_cg_controllability_limit(self.s_h_s_range), self.s_h_s_range, label='Controllability Limit', color='red')
+        plt.axvline(self.convert_cog_abs_to_rel_mac(self.current_x_cog)/self.chord, color='black', linestyle='-', label=f'Current Xcg')
+        plt.axvline(self.convert_cog_abs_to_rel_mac(self.fwd_limit_x_cog)/self.chord, color='red', linestyle='dashdot', label=f'Forward Limit Xcg (max. pilot weight)')
+        plt.axvline(self.convert_cog_abs_to_rel_mac(self.bwd_limit_x_cog)/self.chord, color='red', linestyle='dashdot', label=f'Backward Limit Xcg (min. pilot weight)')
         plt.axhline(self.current_sh_s, color='green', linestyle='--', label=f'Current Sh/S = {self.current_sh_s:.2f}')
         plt.xlabel('Xcg / MAC [-]')
         plt.ylabel('Sh/S [-]')

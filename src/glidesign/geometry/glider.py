@@ -11,11 +11,10 @@ from parapy.core import Input, Attribute, Part, action
 from parapy.core.widgets import Dropdown
 from parapy.core.validate import OneOf, Range, GE, Validator, GreaterThan
 
-from glidesign.geometry import lifting_surface
 # Custom imports
 from .lifting_surface import LiftingSurface, LiftingSection
 from .fuselage import GliderFuselage
-from ..analysis import ScissorPlot
+from ..analysis import ScissorPlot, WeightAndBalance
 from ..core import airfoil_found
 
 class Glider(GeomBase):
@@ -24,6 +23,10 @@ class Glider(GeomBase):
     occupants: int = Input(1, widget = Dropdown([1, 2]), validator = OneOf([1, 2]))                                    # Number of occupants of the glider, default value is 1
     fai_class: str = Input("standard class", widget = Dropdown(["standard class", "15m class", "18m class", "20m class", "open class"]) ,validator = OneOf(["standard class", "15m class", "18m class", "20m class", "open class"]))     # FAI class of the glider, can be "std", "15", "18", "20" or "open"
     open_class_wingspan = Input(25, validator = GE(18))                                     #In case of open class glider
+
+    min_pilot_mass = Input(70, validator= Range(60, 90))                 #Minimum allowed mass for pilot
+    max_pilot_mass = Input(110, validator= Range(80, 120))               #Maximum allowed pilot mass
+    glider_structure_material = Input("Carbon fibre", widget = Dropdown(["Carbon fibre", "Glass fibre"]))
 
     # Main wing parameters
     wing_airfoil_id: str = Input('NACA 0010', validator = airfoil_found)                    # Can be NACA 4- or 5-digit or a string referencing a '.dat' file with coordinates
@@ -46,7 +49,7 @@ class Glider(GeomBase):
 
     # Horizontal tail parameters
     hor_tail_airfoil_id: float = Input('NACA 0010', validator = airfoil_found)              # Horizontal tail airfoil profile
-    hor_tail_span: float = Input(1, validator = Range(0.3, 3))                              # Horizontal tail span
+    hor_tail_span: float = Input(1, validator = Range(0.3, 4))                              # Horizontal tail span
     hor_tail_pos_long: float = Input(1, validator = Range(0.5, 1.3))                        # Horizontal tail position as fraction of fuselage length
     hor_tail_twist: float = Input(0, validator=Range(-5.0, 5.0))                            # Twist of tip w.r.t root in [deg]
     hor_tail_dihedral: float = Input(0.0, validator=Range(-5.0, 5.0))                       # Dihedral angle [deg]
@@ -62,6 +65,12 @@ class Glider(GeomBase):
     ver_tail_height: float = Input(1.2, validator= Range(0.2, 2))                           # Height of vertical tailplane in meters
     ver_tail_sweep: float = Input(5, validator=Range(-5.0, 5.0))                            # Quarter chord sweep angle [deg]
     ver_tail_taper: float = Input(0.6, validator=Range(0.1, 1.0))                           # Taper ratio
+
+    @Input
+    def current_pilot_mass(self):
+        #Return the average for current pilot mass estimate
+        #Also adjustable
+        return (self.max_pilot_mass + self.min_pilot_mass) / 2
 
     # Fuselage parameters
     @Input(validator = Range(0.3, 1.8))
@@ -259,9 +268,61 @@ class Glider(GeomBase):
             wing_position = self.wing_position,
         )
 
+    @Attribute
+    def glider_x_cog(self):
+        glider_wb = WeightAndBalance(min_pilot_mass=self.min_pilot_mass,
+                                     max_pilot_mass=self.max_pilot_mass,
+                                     current_pilot_mass=self.current_pilot_mass,
+                                     glider_structure_material=self.glider_structure_material,
+                                     right_wing_cog=self.right_wing.cog,
+                                     left_wing_cog=self.right_wing.cog,
+                                     vertical_tail_cog= self.vert_tail.cog,
+                                     right_hor_tail_cog=self.right_hor_tail.cog,
+                                     left_hor_tail_cog=self.left_hor_tail.cog,
+                                     fuselage_cog=self.fuselage.fuselage_solid.cog,
+                                     pilot_cog=self.fuselage.canopy_ellipse.center,
+                                     right_wing_volume=self.right_wing.volume,
+                                     left_wing_volume = self.right_wing.volume, #Mirrored has no volume for some reason (assume symmetrical)
+                                     vertical_tail_volume = self.vert_tail.volume,
+                                     right_hor_tail_volume = self.right_hor_tail.volume,
+                                     left_hor_tail_volume = self.right_hor_tail.volume, #Mirrored has no volume for some reason (assume symmetrical)
+                                     fuselage_volume = self.fuselage.fuselage_solid.volume,
+        )
+        current_x_cog = glider_wb.get_current_cog
+        fwd_limit_x_cog = glider_wb.get_fwd_limit_cog
+        bwd_limit_x_cog = glider_wb.get_bwd_limit_cog
+        return current_x_cog, fwd_limit_x_cog, bwd_limit_x_cog
+
+    @Attribute
+    def glider_empty_mass(self):
+        glider_wb = WeightAndBalance(min_pilot_mass=self.min_pilot_mass,
+                                     max_pilot_mass=self.max_pilot_mass,
+                                     current_pilot_mass=self.current_pilot_mass,
+                                     glider_structure_material=self.glider_structure_material,
+                                     right_wing_cog=self.right_wing.cog,
+                                     left_wing_cog=self.right_wing.cog,
+                                     vertical_tail_cog= self.vert_tail.cog,
+                                     right_hor_tail_cog=self.right_hor_tail.cog,
+                                     left_hor_tail_cog=self.left_hor_tail.cog,
+                                     fuselage_cog=self.fuselage.fuselage_solid.cog,
+                                     pilot_cog=self.fuselage.canopy_ellipse.center,
+                                     right_wing_volume=self.right_wing.volume,
+                                     left_wing_volume = self.right_wing.volume, #Mirrored has no volume for some reason (assume symmetrical)
+                                     vertical_tail_volume = self.vert_tail.volume,
+                                     right_hor_tail_volume = self.right_hor_tail.volume,
+                                     left_hor_tail_volume = self.right_hor_tail.volume, #Mirrored has no volume for some reason (assume symmetrical)
+                                     fuselage_volume = self.fuselage.fuselage_solid.volume
+        )
+        current_empty_mass = glider_wb.get_total_empty_mass
+        return current_empty_mass
+
     @action(button_label = "plot")
     def scissor_plot(self):
         plot = ScissorPlot(
+            wing_x_location = self.wing_position[0], #Should technically be MAC position
+            current_x_cog= self.glider_x_cog[0],
+            fwd_limit_x_cog= self.glider_x_cog[1],
+            bwd_limit_x_cog= self.glider_x_cog[2],
             SM= self.SM,
             x_ac= 0.25,
             s_h= self.hor_tail_surface_area,
