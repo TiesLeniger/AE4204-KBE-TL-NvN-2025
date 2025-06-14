@@ -1,21 +1,18 @@
 # Python native imports
-from typing import Optional
-from copy import deepcopy
 
 # Python third party imports
 import numpy as np
 import matlab
 
 # ParaPy imports
-from parapy.geom import GeomBase, translate, rotate, LoftedSolid, Position, Point, Orientation, Vector
-from parapy.core import Input, Attribute, Part, Base, action, child
-from parapy.core.validate import OneOf, Range, GreaterThan, Validator, GreaterThanOrEqualTo, LessThan
+from parapy.geom import GeomBase, translate, rotate, LoftedSolid
+from parapy.core import Input, Attribute, Part, action, child
+from parapy.core.validate import Range, GreaterThan, Validator
 
 # Custom imports
-from ..core import airfoil_found, convert_matlab_dict
+from ..core import airfoil_found
 from .airfoil import Airfoil
 from .ref_frame import Frame
-from ..external import MATLAB_Q3D_ENGINE, Q3DData
 
 class LiftingSection(GeomBase):
     """
@@ -222,66 +219,6 @@ class LiftingSurface(LoftedSolid):
             eta.append([self.profiles[i].position.location.y / self.semi_span])
         return matlab.double(eta)
 
-    @Part
-    def Q3D_params(self):
-        return Q3DData()
-    
-    @action(label = "Run Q3D")
-    def q3d_data(self):
-        """All inputs and results from running Q3D (MATLAB)"""
-        self.q3d_res = MATLAB_Q3D_ENGINE.run_q3d_cst(
-            self.q3d_planform_geom,
-            self.q3d_cst_airfoils,
-            self.q3d_eta_airfoils,
-            matlab.double(self.incidence_angle),
-            self.Q3D_params.mach_number,
-            self.Q3D_params.reynolds_number,
-            self.Q3D_params.velocity,
-            self.Q3D_params.alpha,
-            self.Q3D_params.altitude,
-            self.Q3D_params.density
-        )
-
-    @Attribute
-    def q3d_wing_data(self):
-        result = getattr(self, "q3d_res", None)
-        if result is not None:
-            return convert_matlab_dict(result["Wing"])
-        else:
-            return "Evaluate aerodynamics to view property"
-
-    @Attribute
-    def q3d_section_data(self):
-        result = getattr(self, "q3d_res", None)
-        if result is not None:
-            return convert_matlab_dict(result["Section"])
-        else:
-            return "Evaluate aerodynamics to view property"
-
-    @Attribute
-    def wing_cl(self) -> float:
-        result = getattr(self, "q3d_res", None)
-        if result is not None:
-            return result["CLwing"]
-        else:
-            return "Evaluate aerodynamics to view property"
-
-    @Attribute
-    def wing_cd(self) -> float:
-        result = getattr(self, "q3d_res", None)
-        if result is not None:
-            return result["CDwing"]
-        else:
-            return "Evaluate aerodynamics to view property"
-
-    @Attribute
-    def wing_cm(self) -> float:
-        result = getattr(self, "q3d_res", None)
-        if result is not None:
-            return result["CMwing"]
-        else:
-            return "Evaluate aerodynamics to view property"
-    
     @Part
     def frame(self):
         """to visualize the given lifting surface reference frame"""

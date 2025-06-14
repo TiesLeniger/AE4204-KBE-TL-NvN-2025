@@ -4,6 +4,7 @@ from wsgiref.validate import validator
 
 # Python third party imports
 import numpy as np
+import matlab
 
 # ParaPy imports
 from parapy.geom import GeomBase, translate, rotate, MirroredShape
@@ -16,7 +17,8 @@ from glidesign.geometry import lifting_surface
 from .lifting_surface import LiftingSurface, LiftingSection
 from .fuselage import GliderFuselage
 from ..analysis import ScissorPlot
-from ..core import airfoil_found
+from ..core import airfoil_found, convert_matlab_dict
+from ..external import MATLAB_Q3D_ENGINE, Q3DData
 
 class Glider(GeomBase):
 
@@ -288,6 +290,66 @@ class Glider(GeomBase):
         plot.plot_scissor_plot()
 
         return plot
+    
+    @Part
+    def Q3D_params(self):
+        return Q3DData()
+
+    @action(label = "Run Q3D")
+    def q3d_data(self):
+        """All inputs and results from running Q3D (MATLAB)"""
+        self.q3d_res = MATLAB_Q3D_ENGINE.run_q3d_cst(
+            self.right_wing.q3d_planform_geom,
+            self.right_wing.q3d_cst_airfoils,
+            self.right_wing.q3d_eta_airfoils,
+            matlab.double(self.right_wing.incidence_angle),
+            self.Q3D_params.mach_number,
+            self.Q3D_params.reynolds_number,
+            self.Q3D_params.velocity,
+            self.Q3D_params.alpha,
+            self.Q3D_params.altitude,
+            self.Q3D_params.density
+        )
+
+    @Attribute
+    def q3d_wing_data(self):
+        result = getattr(self, "q3d_res", None)
+        if result is not None:
+            return convert_matlab_dict(result["Wing"])
+        else:
+            return "Evaluate aerodynamics to view property"
+
+    @Attribute
+    def q3d_section_data(self):
+        result = getattr(self, "q3d_res", None)
+        if result is not None:
+            return convert_matlab_dict(result["Section"])
+        else:
+            return "Evaluate aerodynamics to view property"
+
+    @Attribute
+    def wing_cl(self) -> float:
+        result = getattr(self, "q3d_res", None)
+        if result is not None:
+            return result["CLwing"]
+        else:
+            return "Evaluate aerodynamics to view property"
+
+    @Attribute
+    def wing_cd(self) -> float:
+        result = getattr(self, "q3d_res", None)
+        if result is not None:
+            return result["CDwing"]
+        else:
+            return "Evaluate aerodynamics to view property"
+
+    @Attribute
+    def wing_cm(self) -> float:
+        result = getattr(self, "q3d_res", None)
+        if result is not None:
+            return result["CMwing"]
+        else:
+            return "Evaluate aerodynamics to view property"
 
 if __name__ == '__main__':
     from parapy.gui import display
