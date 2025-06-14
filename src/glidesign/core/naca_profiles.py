@@ -35,10 +35,11 @@ def generate_naca4(num_points: int, m: int, p: int, xx: int, spacing: str = 'cos
 
     y_camber = np.zeros_like(x_c)                                               # Array of y coordinates of the camberline, normalised w.r.t chord. Initialised as zeros
     dy_c_dx = np.zeros_like(x_c)
-    y_camber[mask1] = (m/p**2)*(2*p*x_c[mask1] - x_c[mask1]**2)                 # y_camber definition before position of maximum camber
-    y_camber[mask2] = (m/(1-p)**2)*(1 - 2*p + 2*p*x_c[mask2] - x_c[mask2]**2)   # y_camber definition after position of maximum camber
-    dy_c_dx[mask1] = (2*m/p**2)*(p - x_c[mask1])                                # y_camber definition before position of maximum camber
-    dy_c_dx[mask2] = (2*m/(1-p)**2)*(p - x_c[mask2])                            # y_camber definition after position of maximum camber
+    if (m > 0 and p > 0):
+        y_camber[mask1] = (m/p**2)*(2*p*x_c[mask1] - x_c[mask1]**2)                 # y_camber definition before position of maximum camber
+        y_camber[mask2] = (m/(1-p)**2)*(1 - 2*p + 2*p*x_c[mask2] - x_c[mask2]**2)   # y_camber definition after position of maximum camber
+        dy_c_dx[mask1] = (2*m/p**2)*(p - x_c[mask1])                                # y_camber definition before position of maximum camber
+        dy_c_dx[mask2] = (2*m/(1-p)**2)*(p - x_c[mask2])                            # y_camber definition after position of maximum camber
 
     a4 = -0.1036 if closed_TE else -0.1015                                      # Coefficient that determines open or closed TE
     thickness_distribution = (xx/0.2)*(
