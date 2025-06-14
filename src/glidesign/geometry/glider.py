@@ -9,7 +9,7 @@ import numpy as np
 from parapy.geom import GeomBase, translate, rotate, MirroredShape
 from parapy.core import Input, Attribute, Part, action
 from parapy.core.widgets import Dropdown
-from parapy.core.validate import OneOf, Range, GE, Validator
+from parapy.core.validate import OneOf, Range, GE, Validator, GreaterThan
 
 from glidesign.geometry import lifting_surface
 # Custom imports
