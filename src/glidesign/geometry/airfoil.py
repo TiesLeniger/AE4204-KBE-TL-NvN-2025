@@ -7,36 +7,41 @@ import numpy as np
 # Parapy imports
 from parapy.geom import FittedCurve, Point
 from parapy.core import Attribute, Part, Input
-from parapy.core.validate import OneOf, Range
+from parapy.core.validate import OneOf, Range, GreaterThan
+from parapy.gui import display
 from kbeutils.data import airfoils
+from kbeutils.geom import Naca4AirfoilCurve, Naca5AirfoilCurve
+import kbeutils.avl as avl
 
 # Self-built imports
-from ..core import airfoil_found, generate_naca4
+from ..core import airfoil_found, NACA4_PATTERN, NACA5_PATTERN
 from ..core.cst_curves import fit_cst_airfoil
 from .ref_frame import Frame
 
 class Airfoil(FittedCurve):
 
     airfoil_name: str = Input("nlf1-0015", validator = airfoil_found)
-    chord: float = Input(1.0)
-    cst_poly_order: int = Input(5)
-    num_points: int = Input(30)
-    points_spacing: str = Input('cosine', validator = OneOf(['cosine', 'constant']))
-    closed_TE: bool = Input(True)
+    chord: float = Input(1.0, validator = GreaterThan(0.0))
+    cst_poly_order: int = Input(5, validator = GreaterThan(0))
+    num_points: int = Input(200, validator = GreaterThan(0))
+    mesh_deflection: float = Input(1e-5, validator = GreaterThan(0.0))
 
     @Attribute
     def coords(self):
-        name_clean = self.airfoil_name.lower().replace(' ', '')
-        if name_clean.startswith('naca') and len(name_clean) == 8:
-            digits = name_clean[4:]
-            try:
-                m = int(digits[0])
-                p = int(digits[1])
-                tt = int(digits[2:])
-            except ValueError:
-                raise ValueError(f"Invalid format for NACA 4 series: {self.airfoil_name}")
-            coordinates = generate_naca4(num_points = self.num_points, m = m, p = p, xx = tt, spacing = self.points_spacing, closed_TE = self.closed_TE)
-            return [coordinates[:, 0].tolist(), coordinates[:, 1].tolist()]
+        if NACA4_PATTERN.match(self.airfoil_name):
+            digits = NACA4_PATTERN.match(self.airfoil_name).group(1)
+            naca4curve = Naca4AirfoilCurve(designation = digits, mesh_deflection = 1e-6, hidden = True)
+            coordinates = np.array(np.array(naca4curve.coordinates))
+            assert coordinates.shape == (naca4curve.n_points, 3), f"Expected shape ({naca4curve.n_points}, 3), got {coordinates.shape}"
+            coordinates = np.round(coordinates / naca4curve.chord_length, decimals = 5)
+            return [coordinates[:, 0].tolist(), coordinates[:, 2].tolist()]
+        elif NACA5_PATTERN.match(self.airfoil_name):
+            digits = NACA5_PATTERN.match(self.airfoil_name).group(1)
+            naca5curve = Naca5AirfoilCurve(designation = digits, mesh_deflection = 1e-6, hidden = True)
+            coordinates = np.array(np.array(naca5curve.coordinates))
+            assert coordinates.shape == (naca5curve.n_points, 3), f"Expected shape ({naca5curve.n_points}, 3), got {coordinates.shape}"
+            coordinates = np.round(coordinates / naca5curve.chord_length, decimals = 5)
+            return [coordinates[:, 0].tolist(), coordinates[:, 2].tolist()]
         else:
             in_input = os.path.exists(os.path.join(os.getcwd(), "input", "airfoils", self.airfoil_name + ".dat"))
             path_to_af_file = os.path.join(os.getcwd(), "input", "airfoils", self.airfoil_name + ".dat") if in_input else os.path.join(
@@ -87,3 +92,9 @@ class Airfoil(FittedCurve):
     @Part
     def frame(self):
         return Frame(pos = self.position, hidden = False)
+    
+    @Part
+    def avl_section(self):
+        return avl.SectionFromCurve(
+            curve_in = self
+        )

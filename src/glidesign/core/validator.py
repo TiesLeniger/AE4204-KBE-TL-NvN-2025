@@ -10,11 +10,15 @@ import re
 from kbeutils.data import airfoils
 from parapy.core.validate import AdaptedValidator
 
+NACA4_PATTERN = re.compile(r'^NACA\s?(\d{4})$', re.IGNORECASE)
+NACA5_PATTERN = re.compile(r'^NACA\s?(\d{5})$', re.IGNORECASE)
+
 def airfoil_validator(name: str) -> bool:
-    naca4_pattern = re.compile(r'^NACA\s?\d{4}$', re.IGNORECASE)
     name_upper = name.upper()
 
-    if naca4_pattern.match(name_upper):
+    if NACA4_PATTERN.match(name_upper):
+        return True
+    elif NACA5_PATTERN.match(name_upper):
         return True
     else:
         in_input = os.path.isfile(os.path.join(os.getcwd(), "input", "airfoils", name + ".dat"))
@@ -23,12 +27,3 @@ def airfoil_validator(name: str) -> bool:
         return found
 
 airfoil_found = AdaptedValidator(airfoil_validator)
-
-def validate_equal_length_lists(object, attribute_names: list[str]):
-    list_attributes = [getattr(object, name) for name in attribute_names]
-    lengths = [len(lst) for lst in list_attributes]
-    lengths_unique = set(lengths)
-    if len(lengths_unique) > 1:
-        raise ValueError(f"All section-related input lists must have the same length. "
-                         f"Got lengths: {lengths} for attributes {attribute_names}")
-    return True
