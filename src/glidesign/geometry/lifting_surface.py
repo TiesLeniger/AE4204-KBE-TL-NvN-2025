@@ -207,11 +207,9 @@ class LiftingSurface(LoftedSolid):
     @Attribute
     def q3d_cst_airfoils(self) -> matlab.double:
         cst_coeffs = []
-        cst_coeffs.append(self.profiles[0].cst_coeff_u + self.profiles[0].cst_coeff_l)
-        for i in range(1, self.num_sections + 1):
+        for i in range(len(self.profiles)):
             cst_coeffs.append(self.profiles[i].cst_coeff_u + self.profiles[i].cst_coeff_l)
         cst_coeffs = matlab.double(cst_coeffs)
-
         return cst_coeffs
     
     @Attribute
