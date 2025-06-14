@@ -8,7 +8,7 @@ import matlab
 
 # ParaPy imports
 from parapy.geom import GeomBase, translate, rotate, LoftedSolid, Position, Point, Orientation, Vector
-from parapy.core import Input, Attribute, Part, Base, action
+from parapy.core import Input, Attribute, Part, Base, action, child
 from parapy.core.validate import OneOf, Range, GreaterThan, Validator, GreaterThanOrEqualTo, LessThan
 
 # Custom imports
@@ -21,7 +21,6 @@ class LiftingSection(GeomBase):
     """
     Serves as a parameter container for multi section LiftingSurface
     """
-    idx: int = Input(validator = GreaterThanOrEqualTo(0))                   # Section index, later used in LiftingSurface
     root_af_id: str = Input(validator = airfoil_found)                      # ID of the section root airfoil
     tip_af_id: str = Input(validator = airfoil_found)                       # ID of the section tip airfoil
     root_chord: float = Input(0.5, validator = GreaterThan(0.0))            # Root chord of the section [m]
@@ -126,13 +125,11 @@ class LiftingSurface(LoftedSolid):
                         )
         return True
     
-    @Attribute
+    @Part
     def sections(self):
-        sections = []
-        for i in range(self.num_sections):
-            sections.append(LiftingSection(
-            idx = i,
-            root_af_id = self.root_af,
+        return LiftingSection(
+            quantify = self.num_sections,
+            root_af_id = self.root_af if child.index == 0 else child.previous.tip_af_id,
             tip_af_id = self.tip_af,
             root_chord = self.root_chord,
             tip_chord = self.root_chord * self.taper**(1/self.num_sections),
@@ -144,39 +141,42 @@ class LiftingSurface(LoftedSolid):
             af_cst_order = self.af_cst_order,
             af_num_points = self.af_num_points,
             mesh_deflection = self.mesh_deflection,
-            position = self.position if i == 0 else sections[i-1].tip_position
-            ))
-        if self.has_winglet:
-            winglet_pos = rotate(sections[-1].tip_position,
-                                 "x", 90 - self.winglet_cant,
-                                 deg = True)
-            winglet_pos = rotate(winglet_pos,
-                                 "z", self.winglet_toe,
-                                 deg = True)
-            winglet = LiftingSection(
-                idx = self.num_sections,
-                root_af_id = sections[-1].tip_af_id,
-                tip_af_id = self.winglet_tip_af,
-                root_chord = sections[-1].tip_chord,
-                tip_chord = self.winglet_taper * sections[-1].tip_chord,
-                span = self.winglet_length,
-                twist = 0.0,
-                dihedral = 0.0,
-                sweep = self.winglet_sweep,
-                sweep_loc = 0.0,
-                af_cst_order = self.af_cst_order,
-                af_num_points = self.af_num_points,
-                mesh_deflection = self.mesh_deflection,
-                position = winglet_pos
+            position = self.position if child.index == 0 else child.previous.tip_position
             )
-            sections.append(winglet)
-        return sections
+    
+    @Part
+    def winglet(self):
+        winglet_pos = rotate(self.sections[-1].tip_position,
+                                "x", 90 - self.winglet_cant,
+                                deg = True)
+        winglet_pos = rotate(winglet_pos,
+                                "z", self.winglet_toe,
+                                deg = True)
+        return LiftingSection(
+            suppress = not self.has_winglet,
+            idx = self.num_sections,
+            root_af_id = self.sections[-1].tip_af_id,
+            tip_af_id = self.winglet_tip_af,
+            root_chord = self.sections[-1].tip_chord,
+            tip_chord = self.winglet_taper * self.sections[-1].tip_chord,
+            span = self.winglet_length,
+            twist = 0.0,
+            dihedral = 0.0,
+            sweep = self.winglet_sweep,
+            sweep_loc = 0.0,
+            af_cst_order = self.af_cst_order,
+            af_num_points = self.af_num_points,
+            mesh_deflection = self.mesh_deflection,
+            position = winglet_pos
+        )   
 
     @Attribute
     def profiles(self):
         profiles = [self.sections[0].root_airfoil]
-        for i in range(self.num_sections + 1 if self.has_winglet else self.num_sections):
+        for i in range(self.num_sections):
             profiles.append(self.sections[i].tip_airfoil)
+        if self.has_winglet:
+            profiles.append(self.winglet.tip_airfoil)
         return profiles
 
     @Attribute
