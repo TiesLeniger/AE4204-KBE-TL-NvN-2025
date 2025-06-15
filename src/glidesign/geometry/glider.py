@@ -7,7 +7,7 @@ import numpy as np
 import matlab
 
 # ParaPy imports
-from parapy.geom import GeomBase, translate, rotate, MirroredShape
+from parapy.geom import GeomBase, translate, rotate, MirroredShape, Point
 from parapy.core import Input, Attribute, Part, action
 from parapy.core.widgets import Dropdown
 from parapy.core.validate import OneOf, Range, GE, Validator, GreaterThan
@@ -51,6 +51,8 @@ class Glider(GeomBase):
     wing_taper: float = Input(0.5, validator = Range(0.1, 1.0))                             # Taper ratio
     wing_pos_long: float = Input(0.3, validator = Range(0.0, 1.0))
     wing_pos_vert: float = Input(0.2, validator = Range(0.0, 1.0))
+    wing_avl_n_chordwise: int = Input(12, validator = GreaterThan(0))                       # Number of chordwise elements for avl analysis
+    wing_avl_n_spanwise: int = Input(24, validator = GreaterThan(0))                        # Number of spanwise elements for avl analysis
 
     # Winglet parameters
     has_winglet: bool = Input(True)                                                         # Boolean for adding a winglet
@@ -72,14 +74,18 @@ class Glider(GeomBase):
     hor_tail_incidence: float = Input(2, validator=Range(-5.0, 5.0))                        # Incidence angle [deg]
     hor_tail_taper: float = Input(0.5, validator=Range(0.1, 1.0))                           # Taper ratio
     SM: float = Input(0.1, validator = Range(0, 0.2))                                       # Stability margin
+    hor_tail_avl_n_chordwise = Input(8, validator = GreaterThan(0))                         # Horizontal tail chordwise elements for avl
+    hor_tail_avl_n_spanwise = Input(16, validator = GreaterThan(0))                         # Horizontal tail spanwise elements for avl
 
     # Vertical tail parameters
     ver_tail_airfoil_id: float = Input('NACA 0012', validator = airfoil_found)              # Vertical tail airfoil profile
     ver_tail_root_chord: float = Input(0.5, validator = GreaterThan(0.0))                   # Vertical tail root chord
     ver_tail_pos_long: float = Input(1, validator=Range(0.5,1.3))                           # Vertical tail position as fraction of fuselage length
     ver_tail_height: float = Input(1.2, validator= Range(0.2, 2))                           # Height of vertical tailplane in meters
-    ver_tail_sweep: float = Input(5, validator=Range(-5.0, 5.0))                            # Quarter chord sweep angle [deg]
+    ver_tail_sweep: float = Input(5, validator=Range(0.0, 20.0))                            # Quarter chord sweep angle [deg]
     ver_tail_taper: float = Input(0.6, validator=Range(0.1, 1.0))                           # Taper ratio
+    ver_tail_avl_n_chordwise = Input(8, validator = GreaterThan(0))                         # Vertical tail chordwise elements for avl
+    ver_tail_avl_n_spanwise = Input(12, validator = GreaterThan(0))                         # Vertical tail spanwise elements for avl
 
     mesh_deflection: float = Input(1e-4, validator = GreaterThan(0.0))
 
@@ -170,15 +176,15 @@ class Glider(GeomBase):
     def right_wing(self):
         return LiftingSurface(
             name = "Main wing",
-            root_af = self.wing_airfoil_id,
-            tip_af = self.wing_airfoil_id,
+            root_af = self.wing_root_af_id,
+            tip_af = self.wing_tip_af_id,
             root_chord = self.wing_root_chord,
             taper = self.wing_taper,
             span = self.wing_span/2,
             twist = self.wing_twist,
             sweep = self.wing_sweep,
-            sweep_loc = self.wing,
-            dihedral = self.wing_sweep_loc,
+            sweep_loc = self.wing_sweep_loc,
+            dihedral = self.wing_dihedral,
             incidence_angle = self.wing_incidence,
             num_sections = 1,
             mesh_deflection = self.mesh_deflection,
@@ -209,9 +215,9 @@ class Glider(GeomBase):
     def main_wing_avl_surface(self):
         return avl.Surface(
             name = "Main Wing",
-            n_chordwise = Input(12, validator = GreaterThan(0)),
+            n_chordwise = self.wing_avl_n_chordwise,
             chord_spacing = avl.Spacing.cosine,
-            n_spanwise = Input(24, validator = GreaterThan(0)),
+            n_spanwise = self.wing_avl_n_spanwise,
             span_spacing = avl.Spacing.cosine,
             y_duplicate = self.right_wing.position.point[1],
             sections = [profile.avl_section for profile in self.right_wing.profiles]   
@@ -261,9 +267,9 @@ class Glider(GeomBase):
     def horizontal_tail_avl_surface(self):
         return avl.Surface(
             name = "Horizontal tail",
-            n_chordwise = Input(8, validator = GreaterThan(0)),
+            n_chordwise = self.hor_tail_avl_n_chordwise,
             chord_spacing = avl.Spacing.cosine,
-            n_spanwise = Input(16, validator = GreaterThan(0)),
+            n_spanwise = self.hor_tail_avl_n_spanwise,
             span_spacing = avl.Spacing.cosine,
             y_duplicate = self.right_hor_tail.position.point[1],
             sections = [profile.avl_section for profile in self.right_hor_tail.profiles]   
@@ -303,9 +309,9 @@ class Glider(GeomBase):
     def vertical_tail_avl_surface(self):
         return avl.Surface(
             name = "Vertical tail",
-            n_chordwise = Input(8, validator = GreaterThan(0)),
+            n_chordwise = self.ver_tail_avl_n_chordwise,
             chord_spacing = avl.Spacing.cosine,
-            n_spanwise = Input(12, validator = GreaterThan(0)),
+            n_spanwise = self.ver_tail_avl_n_spanwise,
             span_spacing = avl.Spacing.cosine,
             y_duplicate = None,
             sections = [profile.avl_section for profile in self.vert_tail.profiles]   
@@ -469,9 +475,9 @@ class Glider(GeomBase):
         """Configurations are made separately for each Mach number that is provided."""
         return avl.Configuration(name='cruise analysis',
                                  reference_area=self.wing_surface_area,
-                                 reference_span=self.wingspan,
+                                 reference_span=self.wing_span,
                                  reference_chord=self.right_wing.mean_aerodynamic_chord,
-                                 reference_point=self.glider_x_cog[0],
+                                 reference_point= Point(x = self.glider_x_cog[0], y = 0.0, z = 0.0),
                                  surfaces=self.avl_surfaces,
                                  mach= 0.0)
     
