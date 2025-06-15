@@ -501,7 +501,7 @@ class Glider(GeomBase):
     
     @Attribute
     def full_aircraft_moment_coefficient(self):
-        return {result['Name']: result['Totals']['CMtot']
+        return {result['Name']: result['Totals']['Cmtot']
                 for case_name, result in self.avl_analysis.results.items()}
 
 if __name__ == '__main__':
