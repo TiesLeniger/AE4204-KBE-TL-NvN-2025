@@ -424,7 +424,7 @@ class Glider(GeomBase):
             cl_alpha_a_min_h=6,
             velocity=self.Q3D_params.velocity,
             velocity_h=self.Q3D_params.velocity,
-            wingspan = self.wingspan,
+            wingspan = self.wing_span,
             m_tv=abs(self.hor_tail_position[-1] - self.wing_position[-1]),
             sweep_4c= np.deg2rad(self.wing_sweep),
             AR= self.wing_aspect_ratio,
@@ -507,7 +507,7 @@ class Glider(GeomBase):
         """Configurations are made separately for each Mach number that is provided."""
         return avl.Configuration(name='cruise analysis',
                                  reference_area=self.wing_surface_area,
-                                 reference_span=self.wingspan,
+                                 reference_span=self.wing_span,
                                  reference_chord=self.right_wing.mean_aerodynamic_chord,
                                  reference_point=self.position.point,
                                  surfaces=self.avl_surfaces,
