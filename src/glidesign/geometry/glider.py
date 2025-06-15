@@ -431,12 +431,8 @@ class Glider(GeomBase):
             hor_tail_span= self.hor_tail_span,
             hor_tail_taper = self.hor_tail_taper
         )
-        self.right_hor_tail.root_chord = plot.c_h_root_auto_scaled
-
         # Plot
         plot.plot_scissor_plot()
-
-        return plot
     
     @Part
     def Q3D_params(self):
