@@ -1,5 +1,4 @@
 # Python native imports
-import warnings
 from wsgiref.validate import validator
 
 # Python third party imports
@@ -14,15 +13,13 @@ from parapy.core.validate import OneOf, Range, GE, Validator, GreaterThan
 import kbeutils.avl as avl
 
 # Custom imports
-from .lifting_surface import LiftingSurface, LiftingSection
+from .lifting_surface import LiftingSurface
 from .fuselage import GliderFuselage
-
 from ..analysis import ScissorPlot
 from ..core import airfoil_found, convert_matlab_dict
 from ..external import MATLAB_Q3D_ENGINE, Q3DData
 from ..analysis import ScissorPlot, WeightAndBalance
 from ..core import airfoil_found
-
 
 class Glider(GeomBase):
 
