@@ -405,16 +405,17 @@ class Glider(GeomBase):
             wing_position = self.wing_position,
         )
 
-    @action(button_label = "plot")
+    @Attribute(in_tree = True)
     def scissor_plot(self):
-        plot = ScissorPlot(
+        return ScissorPlot(
             wing_x_location = self.wing_position[0], #Should technically be MAC position
-            current_x_cog= self.glider_x_cog[0],
+            actual_x_cog= self.glider_x_cog[0],
             fwd_limit_x_cog= self.glider_x_cog[1],
             bwd_limit_x_cog= self.glider_x_cog[2],
             SM= self.SM,
             x_ac= 0.25,
             s= self.wing_surface_area,
+            Sh_S = self.Sh_S,
             l_h= self.hor_tail_length,
             chord= self.right_wing.mean_aerodynamic_chord,
             cm_ac=-0.05,
@@ -422,8 +423,6 @@ class Glider(GeomBase):
             cl_h=-0.2,
             cl_alpha_h=5,
             cl_alpha_a_min_h=6,
-            velocity=self.Q3D_params.velocity,
-            velocity_h=self.Q3D_params.velocity,
             wingspan = self.wing_span,
             m_tv=abs(self.hor_tail_position[-1] - self.wing_position[-1]),
             sweep_4c= np.deg2rad(self.right_wing.sweep_4c),
@@ -431,8 +430,15 @@ class Glider(GeomBase):
             hor_tail_span= self.hor_tail_span,
             hor_tail_taper = self.hor_tail_taper
         )
-        # Plot
-        plot.plot_scissor_plot()
+    
+    @action(label = "Size tail")
+    def size_tail(self):
+        self.scissor_plot.size_tail()
+        self.Sh_S = self.scissor_plot.Sh_S
+
+    @action(label = "Plot")
+    def plot_scissor_plot(self):
+        self.scissor_plot.plot_scissor_plot()
     
     @Part
     def Q3D_params(self):
