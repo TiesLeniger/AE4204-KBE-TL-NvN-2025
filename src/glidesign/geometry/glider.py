@@ -35,8 +35,8 @@ class Glider(GeomBase):
     open_class_wingspan = Input(25, validator = GE(18))                                                     #In case of open class glider
     cl_cr: float = Input(0.3, validator = GreaterThan(0.0))
 
-    min_pilot_mass = Input(70, validator= Range(60, 90))                 #Minimum allowed mass for pilot
-    max_pilot_mass = Input(110, validator= Range(80, 120))               #Maximum allowed pilot mass
+    min_pilot_mass = Input(50, validator= Range(50, 90))                 #Minimum allowed mass for pilot
+    max_pilot_mass = Input(100, validator= Range(80, 120))               #Maximum allowed pilot mass
     glider_structure_material = Input("Carbon fibre", widget = Dropdown(["Carbon fibre", "Glass fibre"]))
 
     # Main wing parameters
@@ -46,7 +46,7 @@ class Glider(GeomBase):
     wing_sweep: float = Input(0.0, validator = Range(-10.0, 10.0))                          # Quarter chord sweep angle [deg]
     wing_incidence: float = Input(0.0, validator = Range(-5.0, 5.0))                        # Wing Incidence angle [deg]
     wing_taper: float = Input(0.5, validator = Range(0.1, 1.0))                             # Taper ratio
-    wing_pos_long: float = Input(0.3, validator = Range(0.0, 1.0))
+    wing_pos_long: float = Input(0.25, validator = Range(0.0, 1.0))
     wing_pos_vert: float = Input(0.2, validator = Range(0.0, 1.0))
 
     # Winglet parameters
@@ -60,19 +60,19 @@ class Glider(GeomBase):
 
     # Horizontal tail parameters
     hor_tail_airfoil_id: float = Input('NACA 0010', validator = airfoil_found)              # Horizontal tail airfoil profile
-    hor_tail_span: float = Input(1, validator = Range(0.3, 4))                              # Horizontal tail span
+    hor_tail_span: float = Input(2.5, validator = Range(0.3, 15))                              # Horizontal tail span
 
     hor_tail_pos_long: float = Input(1, validator = Range(0.5, 1.3))                        # Horizontal tail position as fraction of fuselage length
     hor_tail_twist: float = Input(0, validator=Range(-5.0, 5.0))                            # Twist of tip w.r.t root in [deg]
     hor_tail_dihedral: float = Input(0.0, validator=Range(-5.0, 5.0))                       # Dihedral angle [deg]
     hor_tail_sweep: float = Input(5, validator=Range(-5.0, 5.0))                            # Quarter chord sweep angle [deg]
     hor_tail_incidence: float = Input(2, validator=Range(-5.0, 5.0))                        # Incidence angle [deg]
-    hor_tail_taper: float = Input(0.5, validator=Range(0.1, 1.0))                           # Taper ratio
+    hor_tail_taper: float = Input(0.55, validator=Range(0.1, 1.0))                           # Taper ratio
     SM: float = Input(0.1, validator = Range(0, 0.2))                                       # Stability margin
 
     # Vertical tail parameters
     ver_tail_airfoil_id: float = Input('NACA 0012', validator = airfoil_found)              # Vertical tail airfoil profile
-    ver_tail_root_chord: float = Input(0.5, validator = GreaterThan(0.0))                   # Vertical tail root chord
+    ver_tail_root_chord: float = Input(0.9, validator = GreaterThan(0.0))                   # Vertical tail root chord
     ver_tail_pos_long: float = Input(1, validator=Range(0.5,1.3))                           # Vertical tail position as fraction of fuselage length
     ver_tail_height: float = Input(1.2, validator= Range(0.2, 2))                           # Height of vertical tailplane in meters
     ver_tail_sweep: float = Input(5, validator=Range(-5.0, 5.0))                            # Quarter chord sweep angle [deg]
@@ -124,6 +124,14 @@ class Glider(GeomBase):
             return self.open_class_wingspan                                                 # Open class has no wingspan limitation, user can define it (default = 25m)
 
     @Attribute
+    def hor_tail_span(self):
+        #Define the tailspan based on wingspan:
+        if self.wingspan <= 18:
+            return 2.5 #meters
+        else:
+            return 3.0 #metres
+
+    @Attribute
     def max_to_mass(self):
         #Define the MTOM based on FAI class limitations:
         if self.fai_class == "standard class":
@@ -145,11 +153,11 @@ class Glider(GeomBase):
 
     @Attribute
     def wing_surface_area(self):
-        return self.right_wing.area * 2
+        return self.right_wing.half_area * 2
 
     @Attribute
     def hor_tail_surface_area(self):
-        return self.right_hor_tail.area * 2
+        return self.right_hor_tail.half_area * 2
 
     @Attribute
     def tail_length(self):
@@ -167,8 +175,8 @@ class Glider(GeomBase):
             name = "Main wing",
             root_af = self.wing_airfoil_id,
             tip_af = self.wing_airfoil_id,
-            root_chord = 0.5,
-            taper = 0.5,
+            root_chord = 0.9,
+            taper = 0.4,
             span = 7.5,
             twist = -2.0,
             sweep = 2.0,
@@ -225,8 +233,8 @@ class Glider(GeomBase):
             root_af = self.hor_tail_airfoil_id,
             tip_af = self.hor_tail_airfoil_id,
             root_chord = self.vert_tail.profiles[-1].chord + 0.1,
-            taper = self.hor_tail_taper,
-            span = self.hor_tail_span,
+            taper = 0.55,
+            span = self.hor_tail_span / 2,
             twist = self.hor_tail_twist,
             sweep = self.hor_tail_sweep,
             sweep_loc = 0.25,
@@ -274,8 +282,8 @@ class Glider(GeomBase):
     def vert_tail(self):
         return LiftingSurface(
             name = "Vertical tail",
-            root_af = "NACA 0012",
-            tip_af = "NACA 0012",
+            root_af = "NACA 0014",
+            tip_af = "NACA 0014",
             root_chord = self.ver_tail_root_chord,
             taper = self.ver_tail_taper,
             span = self.ver_tail_height,
@@ -364,6 +372,29 @@ class Glider(GeomBase):
         current_empty_mass = glider_wb.get_total_empty_mass
         return current_empty_mass
 
+    @Attribute
+    def glider_list_of_masses(self):
+        glider_wb = WeightAndBalance(min_pilot_mass=self.min_pilot_mass,
+                                     max_pilot_mass=self.max_pilot_mass,
+                                     current_pilot_mass=self.current_pilot_mass,
+                                     glider_structure_material=self.glider_structure_material,
+                                     right_wing_cog=self.right_wing.cog,
+                                     left_wing_cog=self.right_wing.cog,
+                                     vertical_tail_cog= self.vert_tail.cog,
+                                     right_hor_tail_cog=self.right_hor_tail.cog,
+                                     left_hor_tail_cog=self.left_hor_tail.cog,
+                                     fuselage_cog=self.fuselage.fuselage_solid.cog,
+                                     pilot_cog=self.fuselage.canopy_ellipse.center,
+                                     right_wing_volume=self.right_wing.volume,
+                                     left_wing_volume = self.right_wing.volume, #Mirrored has no volume for some reason (assume symmetrical)
+                                     vertical_tail_volume = self.vert_tail.volume,
+                                     right_hor_tail_volume = self.right_hor_tail.volume,
+                                     left_hor_tail_volume = self.right_hor_tail.volume, #Mirrored has no volume for some reason (assume symmetrical)
+                                     fuselage_volume = self.fuselage.fuselage_solid.volume
+        )
+        list_of_masses = glider_wb.list_of_masses
+        return list_of_masses
+
     @action(button_label = "plot")
     def scissor_plot(self):
         plot = ScissorPlot(
@@ -373,7 +404,6 @@ class Glider(GeomBase):
             bwd_limit_x_cog= self.glider_x_cog[2],
             SM= self.SM,
             x_ac= 0.25,
-            s_h= self.hor_tail_surface_area,
             s= self.wing_surface_area,
             l_h= self.tail_length,
             chord= self.right_wing.mean_aerodynamic_chord,
@@ -382,13 +412,16 @@ class Glider(GeomBase):
             cl_h=-0.2,
             cl_alpha_h=5,
             cl_alpha_a_min_h=6,
-            velocity=55,
-            velocity_h=55,
+            velocity=self.Q3D_params.velocity,
+            velocity_h=self.Q3D_params.velocity,
             wingspan = self.wingspan,
             m_tv=abs(self.hor_tail_position[-1] - self.wing_position[-1]),
             sweep_4c= np.deg2rad(self.wing_sweep),
             AR= self.wing_aspect_ratio,
+            hor_tail_span= self.hor_tail_span,
+            hor_tail_taper = self.hor_tail_taper
         )
+        self.right_hor_tail.root_chord = plot.c_h_root_auto_scaled
 
         # Plot
         plot.plot_scissor_plot()
