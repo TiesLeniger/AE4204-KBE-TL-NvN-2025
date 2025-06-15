@@ -40,10 +40,13 @@ class Glider(GeomBase):
     glider_structure_material = Input("Carbon fibre", widget = Dropdown(["Carbon fibre", "Glass fibre"]))
 
     # Main wing parameters
-    wing_airfoil_id: str = Input('nlf1-0015', validator = airfoil_found)                    # Can be NACA 4- or 5-digit or a string referencing a '.dat' file with coordinates
+    wing_root_af_id: str = Input('nlf1-0015', validator = airfoil_found)                    # Can be NACA 4- or 5-digit or a string referencing a '.dat' file with coordinates
+    wing_tip_af_id: str = Input('nlf1-0015', validator = airfoil_found)                     # Tip airfoil
+    wing_root_chord: float = Input(0.5, validator = GreaterThan(0.0))                       # Root chord of the wing in [m]
     wing_twist: float = Input(-2.0, validator = Range(-5.0, 5.0))                           # Twist of tip w.r.t root in [deg]
     wing_dihedral: float = Input(3.0, validator = Range(-5.0, 5.0))                         # Wing dihedral angle [deg]
     wing_sweep: float = Input(0.0, validator = Range(-10.0, 10.0))                          # Quarter chord sweep angle [deg]
+    wing_sweep_loc: float = Input(0.25, validator = Range(0.0, 1.0))                        # Chord normalised location around which sweep is applied
     wing_incidence: float = Input(0.0, validator = Range(-5.0, 5.0))                        # Wing Incidence angle [deg]
     wing_taper: float = Input(0.5, validator = Range(0.1, 1.0))                             # Taper ratio
     wing_pos_long: float = Input(0.3, validator = Range(0.0, 1.0))
@@ -78,6 +81,8 @@ class Glider(GeomBase):
     ver_tail_sweep: float = Input(5, validator=Range(-5.0, 5.0))                            # Quarter chord sweep angle [deg]
     ver_tail_taper: float = Input(0.6, validator=Range(0.1, 1.0))                           # Taper ratio
 
+    mesh_deflection: float = Input(1e-4, validator = GreaterThan(0.0))
+
     @Input
     def current_pilot_mass(self):
         #Return the average for current pilot mass estimate
@@ -110,7 +115,7 @@ class Glider(GeomBase):
         return self.fuselage_max_diameter/2
 
     @Attribute
-    def wingspan(self):
+    def wing_span(self):
         #Define the wingspan based on FAI class limitations:
         if self.fai_class == "standard class":
             return 15 #meters
@@ -167,16 +172,16 @@ class Glider(GeomBase):
             name = "Main wing",
             root_af = self.wing_airfoil_id,
             tip_af = self.wing_airfoil_id,
-            root_chord = 0.5,
-            taper = 0.5,
-            span = 7.5,
-            twist = -2.0,
-            sweep = 2.0,
-            sweep_loc = 0.25,
-            dihedral = 2.0,
-            incidence_angle = 1.0,
+            root_chord = self.wing_root_chord,
+            taper = self.wing_taper,
+            span = self.wing_span/2,
+            twist = self.wing_twist,
+            sweep = self.wing_sweep,
+            sweep_loc = self.wing,
+            dihedral = self.wing_sweep_loc,
+            incidence_angle = self.wing_incidence,
             num_sections = 1,
-            mesh_deflection = 1e-4,
+            mesh_deflection = self.mesh_deflection,
             af_cst_order = 5,
             af_num_points = 40,
             af_closed_TE = True,
