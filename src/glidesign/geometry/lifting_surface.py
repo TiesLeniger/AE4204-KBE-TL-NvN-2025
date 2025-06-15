@@ -84,15 +84,15 @@ class LiftingSection(GeomBase):
 class LiftingSurface(LoftedSolid):
 
     name: str = Input()                                                 # Name of the part (e.g. Wing, Horizontal Tail)
-    root_af: str = Input(validator = airfoil_found)
-    tip_af: str = Input(validator = airfoil_found)
+    root_af: str = Input('nlf1-0015', validator = airfoil_found)
+    tip_af: str = Input('nlf1-0015', validator = airfoil_found)
     root_chord: float = Input(0.9, validator = GreaterThan(0.0))
     taper: float = Input(0.4, validator = Range(0.0, 1.0))
     span: float = Input(7.5, validator = GreaterThan(0.0))
     twist: float = Input(0.0)
     sweep: float = Input(2.0)
     sweep_loc: float = Input(0.25, validator = Range(0.0, 1.0))
-    dihedral: float = Input(0.0)
+    dihedral: float = Input(2.0)
     incidence_angle: float = Input(0.0)                                 # Incidence angle of the lifting surface [deg]
     mesh_deflection: float = Input(1e-4)                                # Parameter for LoftedSolid superclass
     af_cst_order: int = Input(4)                                        # Polynomial order to use for CST representation of airfoils
@@ -101,7 +101,7 @@ class LiftingSurface(LoftedSolid):
     ruled: bool = Input(True)
 
     has_winglet: bool = Input(False)                                                    # Boolean for adding a winglet
-    winglet_length: float = Input(0.0, validator = Range(0.0, 1.0, incl_min = False))   # Winglet length in [m]
+    winglet_length: float = Input(0.3, validator = Range(0.0, 1.0, incl_min = False))   # Winglet length in [m]
     winglet_cant: float = Input(5.0, validator = Range(0.0, 90.0))                      # Cant angle of the winglet [deg] (90 deg means wing extension)
     winglet_toe: float = Input(1.0, Range(-5.0, 5.0))                                   # Toe angle of the winglet [deg]
     winglet_sweep: float = Input(30.0, Range(0.0, 50.0))                                # Leading edge sweep of the winglet [deg]
