@@ -226,7 +226,7 @@ class Glider(GeomBase):
             tip_af = self.hor_tail_airfoil_id,
             root_chord = self.vert_tail.profiles[-1].chord + 0.1,
             taper = self.hor_tail_taper,
-            span = self.hor_tail_span,
+            span = self.hor_tail_span/2,
             twist = self.hor_tail_twist,
             sweep = self.hor_tail_sweep,
             sweep_loc = 0.25,
@@ -466,7 +466,7 @@ class Glider(GeomBase):
                                  reference_area=self.wing_surface_area,
                                  reference_span=self.wingspan,
                                  reference_chord=self.right_wing.mean_aerodynamic_chord,
-                                 reference_point=self.position.point,
+                                 reference_point=self.glider_x_cog[0],
                                  surfaces=self.avl_surfaces,
                                  mach= 0.0)
     
