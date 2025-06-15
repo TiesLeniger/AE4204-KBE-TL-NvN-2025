@@ -560,7 +560,7 @@ class Glider(GeomBase):
         return np.rad2deg(np.mean(np.diff(cl_wing)/np.diff(alpha_range)))
 
     @Attribute
-    def dcl_da_tail(self):
+    def dcl_da_tail(self): # Check the convention, what area is used to normalise tail CL. Value seems low
         alpha_range = np.arange(0.0, 11.0, 1.0)
         cl_wing = np.array([result['SurfaceForces']['Horizontal tail']['CL'] for case_nr, result in self.avl_dcl_da_analysis.results.items()])
         return np.rad2deg(np.mean(np.diff(cl_wing)/np.diff(alpha_range)))
