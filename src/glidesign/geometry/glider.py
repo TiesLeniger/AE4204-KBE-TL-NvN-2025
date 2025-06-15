@@ -8,7 +8,7 @@ import matlab
 
 # ParaPy imports
 from parapy.geom import GeomBase, translate, rotate, MirroredShape
-from parapy.core import Input, Attribute, Part, action
+from parapy.core import Input, Attribute, Part, action, child
 from parapy.core.widgets import Dropdown
 from parapy.core.validate import OneOf, Range, GE, Validator, GreaterThan
 import kbeutils.avl as avl
@@ -39,11 +39,13 @@ class Glider(GeomBase):
     min_pilot_mass = Input(70, validator= Range(60, 90))                                                    # Minimum allowed mass for pilot
     max_pilot_mass = Input(110, validator= Range(80, 120))                                                  # Maximum allowed pilot mass
     glider_structure_material = Input("Carbon fibre", widget = Dropdown(["Carbon fibre", "Glass fibre"]))
+    cl_cr = Input(0.3, validator = GreaterThan(0.0))
 
     wing_taper: float = Input(0.4, validator = Range(0.0, 1.0, incl_min = False))
     wing_pos_long: float = Input(0.3, validator = Range(0.0, 1.0))
-
     wing_pos_vert: float = Input(0.2, validator = Range(0.0, 1.0))
+    wing_avl_n_chordwise = Input(12, validator = GreaterThan(0))                         # Vertical tail chordwise elements for avl
+    wing_avl_n_spanwise = Input(24, validator = GreaterThan(0))                         # Vertical tail spanwise elements for avl
 
     @Input(validator = Range(60.0, 120.0))
     def current_pilot_mass(self) -> float:
@@ -66,6 +68,8 @@ class Glider(GeomBase):
     hor_tail_overhang: float = Input(0.1, validator = GreaterThan(0.0))                     # distance in x between LE of root of horizontal tail and LE of tip of vertical tail
     Sh_S: float = Input(0.11, validator = Range(0.0, 1.0, incl_min=False))                  # Ratio of horizotal tail surface area to main wing surface area
     hor_tail_taper: float = Input(0.45, validator=Range(0.1, 1.0))                          # Taper ratio
+    hor_tail_avl_n_chordwise = Input(8, validator = GreaterThan(0))                         # Vertical tail chordwise elements for avl
+    hor_tail_avl_n_spanwise = Input(16, validator = GreaterThan(0))                         # Vertical tail spanwise elements for avl
 
     SM: float = Input(0.1, validator = Range(0, 0.2))                                       # Stability margin
     
@@ -308,9 +312,9 @@ class Glider(GeomBase):
     def main_wing_avl_surface(self):
         return avl.Surface(
             name = "Main Wing",
-            n_chordwise = Input(12, validator = GreaterThan(0)),
+            n_chordwise = self.wing_avl_n_chordwise,
             chord_spacing = avl.Spacing.cosine,
-            n_spanwise = Input(24, validator = GreaterThan(0)),
+            n_spanwise = self.wing_avl_n_spanwise,
             span_spacing = avl.Spacing.cosine,
             y_duplicate = self.right_wing.position.point[1],
             sections = [profile.avl_section for profile in self.right_wing.profiles]   
@@ -352,9 +356,9 @@ class Glider(GeomBase):
     def horizontal_tail_avl_surface(self):
         return avl.Surface(
             name = "Horizontal tail",
-            n_chordwise = Input(8, validator = GreaterThan(0)),
+            n_chordwise = self.hor_tail_avl_n_chordwise,
             chord_spacing = avl.Spacing.cosine,
-            n_spanwise = Input(16, validator = GreaterThan(0)),
+            n_spanwise = self.hor_tail_avl_n_spanwise,
             span_spacing = avl.Spacing.cosine,
             y_duplicate = self.right_hor_tail.position.point[1],
             sections = [profile.avl_section for profile in self.right_hor_tail.profiles]   
@@ -387,9 +391,9 @@ class Glider(GeomBase):
     def vertical_tail_avl_surface(self):
         return avl.Surface(
             name = "Vertical tail",
-            n_chordwise = Input(8, validator = GreaterThan(0)),
+            n_chordwise = self.ver_tail_avl_n_chordwise,
             chord_spacing = avl.Spacing.cosine,
-            n_spanwise = Input(12, validator = GreaterThan(0)),
+            n_spanwise = self.ver_tail_avl_n_spanwise,
             span_spacing = avl.Spacing.cosine,
             y_duplicate = None,
             sections = [profile.avl_section for profile in self.vert_tail.profiles]   
@@ -507,7 +511,7 @@ class Glider(GeomBase):
     @Part
     def avl_configuration(self):
         """Configurations are made separately for each Mach number that is provided."""
-        return avl.Configuration(name='cruise analysis',
+        return avl.Configuration(name='avl analysis',
                                  reference_area=self.wing_surface_area,
                                  reference_span=self.wing_span,
                                  reference_chord=self.right_wing.mean_aerodynamic_chord,
@@ -516,27 +520,55 @@ class Glider(GeomBase):
                                  mach= 0.0)
     
     @Attribute
-    def avl_settings(self):
+    def avl_find_cm_settings(self):
         return {'alpha': avl.Parameter(name='alpha',
                                          setting='CL',
                                          value=self.cl_cr)}
+
+    @Attribute
+    def avl_dcl_da_settings(self):
+        alpha_range = np.arange(0.0, 11.0, 1.0)
+        return [{'alpha': aoa} for aoa in alpha_range]
     
     @Part
-    def avl_case(self):
+    def avl_cm_case(self):
         """avl case definition using the avl_settings dictionary defined above"""
         return avl.Case(name='fixed_cl',  # name _must_ correspond to type of case
-                        settings=self.avl_settings)
+                        settings=self.avl_find_cm_settings)
     
     @Part
-    def avl_analysis(self):
+    def avl_dcl_da_case(self):
+        return avl.Case(quantify = len(self.avl_dcl_da_settings), 
+                        name = 'fixed_aoa_' + str(self.avl_dcl_da_settings[child.index]['alpha']),
+                        settings = self.avl_dcl_da_settings[child.index])
+    
+    @Part
+    def avl_moment_analysis(self):
         return avl.Interface(configuration=self.avl_configuration,
                              # note: AVL always expects a list of cases!
-                             cases=[self.avl_case])
+                             cases=[self.avl_cm_case])
     
+    @Part
+    def avl_dcl_da_analysis(self):
+        return avl.Interface(configuration = self.avl_configuration,
+                             cases = self.avl_dcl_da_case)
+    
+    @Attribute
+    def dcl_da_wing(self):
+        alpha_range = np.arange(0.0, 11.0, 1.0)
+        cl_wing = np.array([result['SurfaceForces']['Main Wing']['CL'] for case_nr, result in self.avl_dcl_da_analysis.results.items()])
+        return np.rad2deg(np.mean(np.diff(cl_wing)/np.diff(alpha_range)))
+
+    @Attribute
+    def dcl_da_tail(self):
+        alpha_range = np.arange(0.0, 11.0, 1.0)
+        cl_wing = np.array([result['SurfaceForces']['Horizontal tail']['CL'] for case_nr, result in self.avl_dcl_da_analysis.results.items()])
+        return np.rad2deg(np.mean(np.diff(cl_wing)/np.diff(alpha_range)))
+
     @Attribute
     def full_aircraft_moment_coefficient(self):
         return {result['Name']: result['Totals']['CMtot']
-                for case_name, result in self.avl_analysis.results.items()}
+                for case_name, result in self.avl_moment_analysis.results.items()}
 
 if __name__ == '__main__':
     from parapy.gui import display
