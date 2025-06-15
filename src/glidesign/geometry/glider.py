@@ -1,4 +1,5 @@
 # Python native imports
+import warnings
 from wsgiref.validate import validator
 
 # Python third party imports
@@ -6,15 +7,16 @@ import numpy as np
 import matlab
 
 # ParaPy imports
-from parapy.geom import GeomBase, translate, rotate, MirroredShape, Point
+from parapy.geom import GeomBase, translate, rotate, MirroredShape
 from parapy.core import Input, Attribute, Part, action
 from parapy.core.widgets import Dropdown
 from parapy.core.validate import OneOf, Range, GE, Validator, GreaterThan
 import kbeutils.avl as avl
 
 # Custom imports
-from .lifting_surface import LiftingSurface
+from .lifting_surface import LiftingSurface, LiftingSection
 from .fuselage import GliderFuselage
+
 from ..analysis import ScissorPlot
 from ..core import airfoil_found, convert_matlab_dict
 from ..external import MATLAB_Q3D_ENGINE, Q3DData
@@ -32,6 +34,7 @@ class Glider(GeomBase):
         "standard class",                                                                                   # FAI class of the glider, can be "std", "15", "18", "20" or "open" 
         widget = Dropdown(["standard class", "15m class", "18m class", "20m class", "open class"]),
         validator = OneOf(["standard class", "15m class", "18m class", "20m class", "open class"]))     
+
     open_class_wingspan = Input(25, validator = GE(18))                                                     # In case of open class glider
     min_pilot_mass = Input(70, validator= Range(60, 90))                                                    # Minimum allowed mass for pilot
     max_pilot_mass = Input(110, validator= Range(80, 120))                                                  # Maximum allowed pilot mass
@@ -39,9 +42,8 @@ class Glider(GeomBase):
 
     wing_taper: float = Input(0.4, validator = Range(0.0, 1.0, incl_min = False))
     wing_pos_long: float = Input(0.3, validator = Range(0.0, 1.0))
+
     wing_pos_vert: float = Input(0.2, validator = Range(0.0, 1.0))
-    wing_avl_n_chordwise: int = Input(12, validator = GreaterThan(0))                       # Number of chordwise elements for avl analysis
-    wing_avl_n_spanwise: int = Input(24, validator = GreaterThan(0))                        # Number of spanwise elements for avl analysis
 
     @Input(validator = Range(60.0, 120.0))
     def current_pilot_mass(self) -> float:
@@ -61,14 +63,19 @@ class Glider(GeomBase):
         return False if self.fai_class == "standard class" else True
 
     # Horizontal tail parameters
-    hor_tail_span: float = Input(2.8, validator = GreaterThan(0.0))                         # Horizontal tail span
     hor_tail_overhang: float = Input(0.1, validator = GreaterThan(0.0))                     # distance in x between LE of root of horizontal tail and LE of tip of vertical tail
     Sh_S: float = Input(0.11, validator = Range(0.0, 1.0, incl_min=False))                  # Ratio of horizotal tail surface area to main wing surface area
     hor_tail_taper: float = Input(0.45, validator=Range(0.1, 1.0))                          # Taper ratio
-    SM: float = Input(0.1, validator = Range(0, 0.2))                                       # Stability margin
-    hor_tail_avl_n_chordwise = Input(8, validator = GreaterThan(0))                         # Horizontal tail chordwise elements for avl
-    hor_tail_avl_n_spanwise = Input(16, validator = GreaterThan(0))                         # Horizontal tail spanwise elements for avl
 
+    SM: float = Input(0.1, validator = Range(0, 0.2))                                       # Stability margin
+    
+    @Input
+    def hor_tail_span(self):
+        if self.wing_span <= 18:
+            return 2.5
+        else:
+            return 3.0
+    
     @Input
     def hor_tail_surface_area(self):
         return self.Sh_S * self.wing_surface_area
@@ -168,6 +175,29 @@ class Glider(GeomBase):
         )
         current_empty_mass = glider_wb.get_total_empty_mass
         return current_empty_mass
+    
+    @Attribute
+    def glider_list_of_masses(self):
+        glider_wb = WeightAndBalance(min_pilot_mass=self.min_pilot_mass,
+                                     max_pilot_mass=self.max_pilot_mass,
+                                     current_pilot_mass=self.current_pilot_mass,
+                                     glider_structure_material=self.glider_structure_material,
+                                     right_wing_cog=self.right_wing.cog,
+                                     left_wing_cog=self.right_wing.cog,
+                                     vertical_tail_cog= self.vert_tail.cog,
+                                     right_hor_tail_cog=self.right_hor_tail.cog,
+                                     left_hor_tail_cog=self.left_hor_tail.cog,
+                                     fuselage_cog=self.fuselage.fuselage_solid.cog,
+                                     pilot_cog=self.fuselage.canopy_ellipse.center,
+                                     right_wing_volume=self.right_wing.volume,
+                                     left_wing_volume = self.right_wing.volume, #Mirrored has no volume for some reason (assume symmetrical)
+                                     vertical_tail_volume = self.vert_tail.volume,
+                                     right_hor_tail_volume = self.right_hor_tail.volume,
+                                     left_hor_tail_volume = self.right_hor_tail.volume, #Mirrored has no volume for some reason (assume symmetrical)
+                                     fuselage_volume = self.fuselage.fuselage_solid.volume
+        )
+        list_of_masses = glider_wb.list_of_masses
+        return list_of_masses
 
     # Fuselage attributes
     @Attribute
@@ -203,6 +233,7 @@ class Glider(GeomBase):
     def wing_aspect_ratio(self):
         return self.wing_span**2 / self.wing_surface_area
 
+
     # Horizontail tail attributes
     @Attribute
     def hor_tail_tip_chord(self):
@@ -212,7 +243,7 @@ class Glider(GeomBase):
     def hor_tail_position(self):
         return translate(rotate(self.vert_tail.profiles[-1].position, "x", -90, deg = True),
                          "x", -self.hor_tail_overhang)
-    
+   
     @Attribute
     def hor_tail_length(self):
         quarter_chord_wing = 0.25 * self.right_wing.mean_aerodynamic_chord
@@ -277,9 +308,9 @@ class Glider(GeomBase):
     def main_wing_avl_surface(self):
         return avl.Surface(
             name = "Main Wing",
-            n_chordwise = self.wing_avl_n_chordwise,
+            n_chordwise = Input(12, validator = GreaterThan(0)),
             chord_spacing = avl.Spacing.cosine,
-            n_spanwise = self.wing_avl_n_spanwise,
+            n_spanwise = Input(24, validator = GreaterThan(0)),
             span_spacing = avl.Spacing.cosine,
             y_duplicate = self.right_wing.position.point[1],
             sections = [profile.avl_section for profile in self.right_wing.profiles]   
@@ -321,9 +352,9 @@ class Glider(GeomBase):
     def horizontal_tail_avl_surface(self):
         return avl.Surface(
             name = "Horizontal tail",
-            n_chordwise = self.hor_tail_avl_n_chordwise,
+            n_chordwise = Input(8, validator = GreaterThan(0)),
             chord_spacing = avl.Spacing.cosine,
-            n_spanwise = self.hor_tail_avl_n_spanwise,
+            n_spanwise = Input(16, validator = GreaterThan(0)),
             span_spacing = avl.Spacing.cosine,
             y_duplicate = self.right_hor_tail.position.point[1],
             sections = [profile.avl_section for profile in self.right_hor_tail.profiles]   
@@ -356,9 +387,9 @@ class Glider(GeomBase):
     def vertical_tail_avl_surface(self):
         return avl.Surface(
             name = "Vertical tail",
-            n_chordwise = self.ver_tail_avl_n_chordwise,
+            n_chordwise = Input(8, validator = GreaterThan(0)),
             chord_spacing = avl.Spacing.cosine,
-            n_spanwise = self.ver_tail_avl_n_spanwise,
+            n_spanwise = Input(12, validator = GreaterThan(0)),
             span_spacing = avl.Spacing.cosine,
             y_duplicate = None,
             sections = [profile.avl_section for profile in self.vert_tail.profiles]   
@@ -383,7 +414,6 @@ class Glider(GeomBase):
             bwd_limit_x_cog= self.glider_x_cog[2],
             SM= self.SM,
             x_ac= 0.25,
-            s_h= self.hor_tail_surface_area,
             s= self.wing_surface_area,
             l_h= self.hor_tail_length,
             chord= self.right_wing.mean_aerodynamic_chord,
@@ -392,13 +422,16 @@ class Glider(GeomBase):
             cl_h=-0.2,
             cl_alpha_h=5,
             cl_alpha_a_min_h=6,
-            velocity=55,
-            velocity_h=55,
+            velocity=self.Q3D_params.velocity,
+            velocity_h=self.Q3D_params.velocity,
             wingspan = self.wingspan,
             m_tv=abs(self.hor_tail_position[-1] - self.wing_position[-1]),
             sweep_4c= np.deg2rad(self.wing_sweep),
             AR= self.wing_aspect_ratio,
+            hor_tail_span= self.hor_tail_span,
+            hor_tail_taper = self.hor_tail_taper
         )
+        self.right_hor_tail.root_chord = plot.c_h_root_auto_scaled
 
         # Plot
         plot.plot_scissor_plot()
@@ -474,9 +507,9 @@ class Glider(GeomBase):
         """Configurations are made separately for each Mach number that is provided."""
         return avl.Configuration(name='cruise analysis',
                                  reference_area=self.wing_surface_area,
-                                 reference_span=self.wing_span,
+                                 reference_span=self.wingspan,
                                  reference_chord=self.right_wing.mean_aerodynamic_chord,
-                                 reference_point= Point(x = self.glider_x_cog[0], y = 0.0, z = 0.0),
+                                 reference_point=self.position.point,
                                  surfaces=self.avl_surfaces,
                                  mach= 0.0)
     
@@ -500,7 +533,7 @@ class Glider(GeomBase):
     
     @Attribute
     def full_aircraft_moment_coefficient(self):
-        return {result['Name']: result['Totals']['Cmtot']
+        return {result['Name']: result['Totals']['CMtot']
                 for case_name, result in self.avl_analysis.results.items()}
 
 if __name__ == '__main__':

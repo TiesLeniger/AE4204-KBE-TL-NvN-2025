@@ -42,9 +42,16 @@ class WeightAndBalance(Base):
 
     @Attribute
     def list_of_volumes(self):
-        volumetric_structure_fraction = 0.13
-        volume_list = [self.right_wing_volume, self.left_wing_volume, self.vertical_tail_volume, self.right_hor_tail_volume, self.left_hor_tail_volume, self.fuselage_volume]
-        return [item * volumetric_structure_fraction for item in volume_list]
+        #Give the structure a volume that resembles the thickness of the structure
+        volumetric_structure_fraction_fuselage = 0.07
+        volumetric_structure_fraction_lifting_surface = 0.14
+        volumetric_structure_fraction_vertical_tail = 0.27
+        return [volumetric_structure_fraction_lifting_surface*self.right_wing_volume,
+                volumetric_structure_fraction_lifting_surface*self.left_wing_volume,
+                volumetric_structure_fraction_vertical_tail*self.vertical_tail_volume,
+                volumetric_structure_fraction_lifting_surface*self.right_hor_tail_volume,
+                volumetric_structure_fraction_lifting_surface*self.left_hor_tail_volume,
+                volumetric_structure_fraction_fuselage*self.fuselage_volume]
 
     @Attribute
     def list_of_x_cog(self):

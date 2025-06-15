@@ -24,8 +24,10 @@ class ScissorPlot(Base):
     wing_x_location = Input()
 
     #Geometry parameters
+    hor_tail_span = Input()
+    hor_tail_taper = Input()
     x_ac = Input(0.25)                   #Location aerodynamic centre w.r.t. MAC [-]
-    s_h = Input()                     #Horizontal tail surface [m^2]
+    #s_h = Input()                     #Horizontal tail surface [m^2]
     s = Input()                    #Wing surface area  [m^2]
 
     l_h = Input()                     #Tail length (distance AC wing - AC horizontal tail) [m]
@@ -88,7 +90,7 @@ class ScissorPlot(Base):
 
     def convert_cog_abs_to_rel_mac(self, x_cog_abs):
         #make leading edge (should technically be LE of MAC(adjust in glider.py)) the datum
-        return x_cog_abs - self.wing_x_location
+        return (x_cog_abs - self.wing_x_location)/self.chord
 
     #Plot the scissor plot
     def plot_scissor_plot(self):
@@ -96,9 +98,9 @@ class ScissorPlot(Base):
         plt.plot(self.x_cg_stability_limit(self.s_h_s_range), self.s_h_s_range, label='Stability Limit', color='blue')
         plt.plot(self.x_cg_stability_limit_no_sm(self.s_h_s_range), self.s_h_s_range, label='Stability Limit (no margin)', linestyle = '--', color='blue')
         plt.plot(self.x_cg_controllability_limit(self.s_h_s_range), self.s_h_s_range, label='Controllability Limit', color='red')
-        plt.axvline(self.convert_cog_abs_to_rel_mac(self.current_x_cog)/self.chord, color='black', linestyle='-', label=f'Current Xcg')
-        plt.axvline(self.convert_cog_abs_to_rel_mac(self.fwd_limit_x_cog)/self.chord, color='red', linestyle='dashdot', label=f'Forward Limit Xcg (max. pilot weight)')
-        plt.axvline(self.convert_cog_abs_to_rel_mac(self.bwd_limit_x_cog)/self.chord, color='red', linestyle='dashdot', label=f'Backward Limit Xcg (min. pilot weight)')
+        plt.axvline(self.convert_cog_abs_to_rel_mac(self.current_x_cog), color='black', linestyle='-', label=f'Current Xcg')
+        plt.axvline(self.convert_cog_abs_to_rel_mac(self.fwd_limit_x_cog), color='red', linestyle='dashdot', label=f'Forward Limit Xcg (max. pilot weight)')
+        plt.axvline(self.convert_cog_abs_to_rel_mac(self.bwd_limit_x_cog), color='red', linestyle='dashdot', label=f'Backward Limit Xcg (min. pilot weight)')
         plt.axhline(self.current_sh_s, color='green', linestyle='--', label=f'Current Sh/S = {self.current_sh_s:.2f}')
         plt.xlabel('Xcg / MAC [-]')
         plt.ylabel('Sh/S [-]')
@@ -106,3 +108,17 @@ class ScissorPlot(Base):
         plt.grid(True)
         plt.legend()
         plt.show()
+
+    def get_sh_s_stability(self, x_cg_rel_mac):
+        a = (self.cl_alpha_h / self.cl_alpha_a_min_h) * (1 - self.de_da_est) * (self.l_h / self.chord) * (self.velocity_h / self.velocity) ** 2
+        b = self.x_ac - self.SM
+        c = (self.cl_alpha_h / self.cl_alpha_a_min_h) * (1 - self.de_da_est) * (self.l_h / self.chord) * (self.velocity_h / self.velocity) ** 2
+        return (x_cg_rel_mac / a) - (b / c)
+
+    @Attribute
+    def s_h(self):
+        return self.get_sh_s_stability(self.convert_cog_abs_to_rel_mac(self.bwd_limit_x_cog)) * self.s
+
+    @Attribute
+    def c_h_root_auto_scaled(self):
+        return (2 * self.s_h) / (self.hor_tail_span * (1 + self.hor_tail_taper))
