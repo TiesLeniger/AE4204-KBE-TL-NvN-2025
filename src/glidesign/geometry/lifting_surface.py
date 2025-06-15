@@ -218,6 +218,15 @@ class LiftingSurface(LoftedSolid):
         for i in range(1, len(self.profiles)):
             eta.append([self.profiles[i].position.location.y / self.semi_span])
         return matlab.double(eta)
+    
+    @Attribute
+    def sweep_4c(self):
+        root_4c = self.profiles[0].position.x + self.profiles[0].chord/4
+        if self.has_winglet:
+            tip_4c = self.profiles[-2].position.x + self.profiles[-2].chord/4
+        else:
+            tip_4c = self.profiles[-1].position.x + self.profiles[-1].chord/4
+        return np.rad2deg(np.arctan((tip_4c - root_4c)/self.semi_span))
 
     @Part
     def frame(self):

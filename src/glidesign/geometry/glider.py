@@ -426,7 +426,7 @@ class Glider(GeomBase):
             velocity_h=self.Q3D_params.velocity,
             wingspan = self.wing_span,
             m_tv=abs(self.hor_tail_position[-1] - self.wing_position[-1]),
-            sweep_4c= np.deg2rad(self.wing_sweep),
+            sweep_4c= self.right_wing.sweep_4c,
             AR= self.wing_aspect_ratio,
             hor_tail_span= self.hor_tail_span,
             hor_tail_taper = self.hor_tail_taper
