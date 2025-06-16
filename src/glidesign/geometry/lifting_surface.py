@@ -35,9 +35,9 @@ class LiftingSection(GeomBase):
 
     root_af_id: str = Input(validator=airfoil_found)  # Root airfoil ID
     tip_af_id: str = Input(validator=airfoil_found)   # Tip airfoil ID
-    root_chord: float = Input(0.5, validator=GreaterThan(0.0))  # Root chord length
-    tip_chord: float = Input(0.2, validator=GreaterThan(0.0))   # Tip chord length
-    span: float = Input(7.3, validator=GreaterThan(0.0))        # Span of the section
+    root_chord: float = Input(0.9, validator=GreaterThan(0.0))  # Root chord length
+    tip_chord: float = Input(0.5, validator=GreaterThan(0.0))   # Tip chord length
+    span: float = Input(7.5, validator=GreaterThan(0.0))        # Span of the section
     twist: float = Input(0.0)  # Twist angle of the section [deg]
     dihedral: float = Input(0.0)  # Dihedral angle of the section [deg]
     sweep: float = Input(0.0)  # Sweep angle of the section [deg]
