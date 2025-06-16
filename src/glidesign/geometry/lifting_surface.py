@@ -84,8 +84,8 @@ class LiftingSection(GeomBase):
 class LiftingSurface(LoftedSolid):
 
     name: str = Input()                                                 # Name of the part (e.g. Wing, Horizontal Tail)
-    root_af: str = Input('nlf1-0015', validator = airfoil_found)
-    tip_af: str = Input('nlf1-0015', validator = airfoil_found)
+    root_af: str = Input('NACA 65210', validator = airfoil_found)
+    tip_af: str = Input('NACA 65210', validator = airfoil_found)
     root_chord: float = Input(0.9, validator = GreaterThan(0.0))
     taper: float = Input(0.4, validator = Range(0.0, 1.0))
     span: float = Input(7.5, validator = GreaterThan(0.0))

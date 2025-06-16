@@ -515,15 +515,15 @@ class Glider(GeomBase):
                                  reference_area=self.wing_surface_area,
                                  reference_span=self.wing_span,
                                  reference_chord=self.right_wing.mean_aerodynamic_chord,
-                                 reference_point=Point(self.right_wing.x_ac, 0.0, 0.0),
+                                 reference_point=Point(self.right_wing.x_ac, 0.0, self.right_wing.position.z),
                                  surfaces=self.avl_surfaces,
                                  mach= 0.0)
     
     @Attribute
-    def avl_find_cm_settings(self):
+    def avl_find_Cm_ac_settings(self):
         return {'alpha': avl.Parameter(name='alpha',
                                          setting='CL',
-                                         value=self.cl_cr)}
+                                         value= 0.0)}
 
     @Attribute
     def avl_dcl_da_settings(self):
@@ -531,10 +531,10 @@ class Glider(GeomBase):
         return [{'alpha': aoa} for aoa in alpha_range]
     
     @Part
-    def avl_cm_case(self):
+    def avl_Cm_ac_case(self):
         """avl case definition using the avl_settings dictionary defined above"""
         return avl.Case(name='fixed_cl',  # name _must_ correspond to type of case
-                        settings=self.avl_find_cm_settings)
+                        settings=self.avl_find_Cm_ac_settings)
     
     @Part
     def avl_dcl_da_case(self):
@@ -543,10 +543,10 @@ class Glider(GeomBase):
                         settings = self.avl_dcl_da_settings[child.index])
     
     @Part
-    def avl_moment_analysis(self):
+    def avl_Cm_ac_analysis(self):
         return avl.Interface(configuration=self.avl_configuration,
                              # note: AVL always expects a list of cases!
-                             cases=[self.avl_cm_case])
+                             cases=[self.avl_Cm_ac_case])
     
     @Part
     def avl_dcl_da_analysis(self):
@@ -567,13 +567,8 @@ class Glider(GeomBase):
     
     @Attribute
     def cm_ac(self):
-        cm_ac = np.array([result['SurfaceForces']['Main Wing']['Cm'] for case_nr, result in self.avl_dcl_da_analysis.results.items()])
+        cm_ac = np.array([result['SurfaceForces']['Main Wing']['Cm'] for case_nr, result in self.avl_Cm_ac_analysis.results.items()])
         return np.mean(cm_ac)
-
-    @Attribute
-    def full_aircraft_moment_coefficient(self):
-        return {result['Name']: result['Totals']['CMtot']
-                for case_name, result in self.avl_moment_analysis.results.items()}
 
 if __name__ == '__main__':
     from parapy.gui import display
