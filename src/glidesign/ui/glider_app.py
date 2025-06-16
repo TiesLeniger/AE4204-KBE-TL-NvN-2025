@@ -16,5 +16,5 @@ class GliderApp(Base):
             fai_class = str(self.parameters["FAI Class"]),
             open_class_wingspan = float(self.parameters["Open class wingspan"]),
             current_pilot_mass = float(self.parameters["Pilot mass"]),
-            glider_structural_material = str(self.parameters["Structural material"])
+            glider_structure_material = str(self.parameters["Structural material"])
             )
