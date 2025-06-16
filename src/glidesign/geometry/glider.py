@@ -108,7 +108,7 @@ class Glider(GeomBase):
 
     # Horizontal tail parameters
     hor_tail_overhang: float = Input(0.0, validator = GE(0.0))                              # distance in x between LE of root of horizontal tail and LE of tip of vertical tail
-    Sh_S: float = Input(0.11, validator = Range(0.0, 1.0, incl_min=False))                  # Ratio of horizotal tail surface area to main wing surface area
+    Sh_S: float = Input(0.15, validator = Range(0.0, 1.0, incl_min=False))                  # Ratio of horizotal tail surface area to main wing surface area
     hor_tail_taper: float = Input(0.6, validator=Range(0.1, 1.0))                           # Taper ratio
     hor_tail_avl_n_chordwise = Input(8, validator = GreaterThan(0))                         # Vertical tail chordwise elements for avl
     hor_tail_avl_n_spanwise = Input(16, validator = GreaterThan(0))                         # Vertical tail spanwise elements for avl
@@ -118,7 +118,7 @@ class Glider(GeomBase):
     @Input
     def hor_tail_span(self):
         if self.wing_span <= 18:
-            return 2.5
+            return 2.6
         else:
             return 3.0
     
@@ -131,8 +131,8 @@ class Glider(GeomBase):
         return (2*self.hor_tail_surface_area)/(self.hor_tail_span * (1 + self.hor_tail_taper))
 
     # Vertical tail parameters
-    ver_tail_aspect_ratio: float = Input(1.70, validator = Range(1.5, 2.0))                 # Vertical tail aspect ratio
-    ver_tail_volume: float = Input(0.065, validator = Range(0.045, 0.075))                  # Vertical tail volume
+    ver_tail_aspect_ratio: float = Input(1.6, validator = Range(1.5, 2.0))                 # Vertical tail aspect ratio
+    ver_tail_volume: float = Input(0.05, validator = Range(0.045, 0.075))                  # Vertical tail volume
     ver_tail_root_chord: float = Input(0.90, validator = GreaterThan(0.0))                  # Vertical tail root chord
     ver_tail_sweep: float = Input(15.0, validator=Range(0.0, 20.0))                         # Leading edge sweep angle [deg]
     ver_tail_avl_n_chordwise = Input(8, validator = GreaterThan(0))                         # Vertical tail chordwise elements for avl
