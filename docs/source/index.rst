@@ -1,17 +1,15 @@
-.. GliDesign documentation master file, created by
-   sphinx-quickstart on Thu May  1 13:58:28 2025.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 GliDesign documentation
 =======================
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
+This is the documentation of the glider design application 'GliDesign'. This application
+integrates geometric modelling, stability analysis and performance analysis for gliders,
+aiming to allow for rapid early stage design iterations.
 
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
+   core
+   geometry
+   analysis
