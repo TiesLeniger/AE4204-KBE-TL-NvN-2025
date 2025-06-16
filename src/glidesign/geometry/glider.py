@@ -9,25 +9,53 @@ import matlab
 from parapy.geom import GeomBase, translate, rotate, MirroredShape, Point
 from parapy.core import Input, Attribute, Part, action, child
 from parapy.core.widgets import Dropdown
-from parapy.core.validate import OneOf, Range, GE, Validator, GreaterThan
+from parapy.core.validate import OneOf, Range, GE, GreaterThan
 from parapy.exchange.step import STEPWriter
 import kbeutils.avl as avl
 
 # Custom imports
-from .lifting_surface import LiftingSurface, LiftingSection
+from .lifting_surface import LiftingSurface
 from .fuselage import GliderFuselage
 
 from ..analysis import ScissorPlot
-from ..core import airfoil_found, convert_matlab_dict
+from ..core import airfoil_found, convert_matlab_dict, G0, RHO0
 from ..external import MATLAB_Q3D_ENGINE, Q3DData
 from ..analysis import ScissorPlot, WeightAndBalance, size_tail
-from ..core import airfoil_found, G0, RHO0
 
 # Constants
 CS22_EMPTY_STALL_SPEED = 90/3.6                         # CS22 specified stall speed with airbrakes retracted, water balast empty (pilot + empty weight), [m/s]
 CL_MAX_ESTIMATE = 1.3                                   # [-], estimate of CL max that a high aspect glider wing can generate
 
 class Glider(GeomBase):
+    """
+    Represents a glider with properties like wing and fuselage geometry, aerodynamic properties,
+    and design parameters. Computes important properties such as center of gravity (CG), wing loading, 
+    and performance metrics like lift-to-drag ratio (L/D).
+    
+    Attributes:
+        occupants (int): Number of occupants in the glider (1 or 2).
+        fai_class (str): The FAI class of the glider (e.g., "standard class", "15m class").
+        open_class_wingspan (float): Wingspan for open class gliders.
+        min_pilot_mass (float): Minimum allowed mass for the pilot.
+        max_pilot_mass (float): Maximum allowed mass for the pilot.
+        glider_structure_material (str): Material used for the glider's structure (e.g., "Carbon fibre").
+        wing_taper (float): The taper ratio of the wing.
+        wing_pos_long (float): The longitudinal position of the wing on the fuselage.
+        wing_pos_vert (float): The vertical position of the wing on the fuselage.
+        wing_avl_n_chordwise (int): Number of chordwise elements for AVL analysis.
+        wing_avl_n_spanwise (int): Number of spanwise elements for AVL analysis.
+        cruise_speed (float): The cruising speed of the glider.
+        current_pilot_mass (float): The current mass of the pilot.
+        wing_loading (float): The wing loading of the glider.
+        wing_root_chord (float): The root chord length of the wing.
+        has_winglet (bool): Whether the glider has a winglet.
+        hor_tail_overhang (float): The distance between the horizontal tail and vertical tail.
+        Sh_S (float): The ratio of horizontal tail surface area to main wing surface area.
+        hor_tail_taper (float): The taper ratio of the horizontal tail.
+        hor_tail_avl_n_chordwise (int): Number of chordwise elements for the horizontal tail in AVL.
+        hor_tail_avl_n_spanwise (int): Number of spanwise elements for the horizontal tail in AVL.
+        SM (float): Stability margin.
+    """
     # Top-level parameters
     occupants: int = Input(1, widget = Dropdown([1, 2]), validator = OneOf([1, 2]))                         # Number of occupants of the glider, default value is 1
     fai_class: str = Input(
