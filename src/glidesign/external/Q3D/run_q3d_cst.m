@@ -21,7 +21,7 @@ function [Res, AC] = run_q3d_cst(wing_planform_geom, wing_airfoils, airfoil_etas
 
    % Viscous vs inviscid
    AC.Visc  = 1;              % 0 for inviscid and 1 for viscous analysis
-   AC.Aero.MaxIterIndex = 150;    %Maximum number of Iteration for the
+   AC.Aero.MaxIterIndex = 300;    %Maximum number of Iteration for the
                                    %convergence of viscous calculation
 
 
