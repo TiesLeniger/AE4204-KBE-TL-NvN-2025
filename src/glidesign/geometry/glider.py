@@ -590,6 +590,10 @@ class Glider(GeomBase):
     def step_writer(self):
         return STEPWriter(trees = [self],
                           filename = Path.cwd() / "output" / "glider.stp")
+    
+    @action(label = "Write STEP file")
+    def write_step_file(self):
+        self.step_writer.write()
 
 if __name__ == '__main__':
     from parapy.gui import display
