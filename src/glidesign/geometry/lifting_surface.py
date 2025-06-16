@@ -198,16 +198,16 @@ class LiftingSurface(LoftedSolid):
     @Attribute
     def q3d_planform_geom(self) -> matlab.double:
         planform_geom = []
-        for i in range(len(self.profiles)):
+        for i in range(len(self.sections) + 1):
             x, y, z = self.profiles[i].position.location
-            twist = 0.0 if (i == 0 or i-1 >= len(self.sections)) else self.sections[i-1].twist
+            twist = 0.0 if i == 0 else self.sections[i-1].twist
             planform_geom.append([x, y, z, self.profiles[i].chord, twist])
         return matlab.double(planform_geom)
     
     @Attribute
     def q3d_cst_airfoils(self) -> matlab.double:
         cst_coeffs = []
-        for i in range(len(self.profiles)):
+        for i in range(len(self.sections) + 1):
             cst_coeffs.append(self.profiles[i].cst_coeff_u + self.profiles[i].cst_coeff_l)
         cst_coeffs = matlab.double(cst_coeffs)
         return cst_coeffs
@@ -215,7 +215,7 @@ class LiftingSurface(LoftedSolid):
     @Attribute
     def q3d_eta_airfoils(self) -> matlab.double:
         eta = [[0.0]]
-        for i in range(1, len(self.profiles)):
+        for i in range(1, len(self.sections) + 1):
             eta.append([self.profiles[i].position.location.y / self.semi_span])
         return matlab.double(eta)
     

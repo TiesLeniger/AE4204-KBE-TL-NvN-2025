@@ -39,13 +39,27 @@ class Glider(GeomBase):
     min_pilot_mass = Input(70, validator= Range(60, 90))                                                    # Minimum allowed mass for pilot
     max_pilot_mass = Input(110, validator= Range(80, 120))                                                  # Maximum allowed pilot mass
     glider_structure_material = Input("Carbon fibre", widget = Dropdown(["Carbon fibre", "Glass fibre"]))
-    cl_cr = Input(0.3, validator = GreaterThan(0.0))
 
     wing_taper: float = Input(0.4, validator = Range(0.0, 1.0, incl_min = False))
     wing_pos_long: float = Input(0.28, validator = Range(0.0, 1.0))
     wing_pos_vert: float = Input(0.22, validator = Range(0.0, 1.0))
     wing_avl_n_chordwise = Input(12, validator = GreaterThan(0))                         # Vertical tail chordwise elements for avl
     wing_avl_n_spanwise = Input(24, validator = GreaterThan(0))                         # Vertical tail spanwise elements for avl
+
+    @Input(validator = GreaterThan(80.0/3.6))
+    def cruise_speed(self):
+        #Define the MTOM based on FAI class limitations:
+        if self.fai_class == "standard class":
+            cruise_speed = 140                          # [km/h]
+        elif self.fai_class == "15m class": 
+            cruise_speed = 160
+        elif self.fai_class == "18m class":
+            cruise_speed = 180
+        elif self.fai_class == "20m class":
+            cruise_speed = 160
+        elif self.fai_class == "open class":
+            cruise_speed = 180
+        return cruise_speed/3.6
 
     @Input(validator = Range(60.0, 120.0))
     def current_pilot_mass(self) -> float:
@@ -131,6 +145,15 @@ class Glider(GeomBase):
             return 800 #kg
         elif self.fai_class == "open class":
             return 850 #kg
+        
+    @Attribute
+    def cl_cruise_light(self):
+        empty_plus_pilot = self.glider_empty_mass + self.current_pilot_mass
+        return (empty_plus_pilot*G0)/(0.5*RHO0*self.cruise_speed**2*self.wing_surface_area)
+    
+    @Attribute
+    def cl_cruise_heavy(self):
+        return (self.max_to_mass*G0)/(0.5*RHO0*self.cruise_speed**2*self.wing_surface_area)
         
     @Attribute
     def glider_x_cog(self):
@@ -432,7 +455,6 @@ class Glider(GeomBase):
         )
         scissorplot.plot_scissor_plot()
     
-    
     @action(label = "Size tail")
     def size_tail(self):
         CL_h = -0.35*self.hor_tail_aspect_ratio**(1/3)
@@ -454,12 +476,15 @@ class Glider(GeomBase):
     
     @Part
     def Q3D_params(self):
-        return Q3DData()
+        return Q3DData(
+            velocity = self.cruise_speed,
+            altitude = 1.0
+        )
 
-    @action(label = "Run Q3D")
+    @action(label = "Run Q3D - speed polar")
     def q3d_data(self):
         """All inputs and results from running Q3D (MATLAB)"""
-        self.q3d_res = MATLAB_Q3D_ENGINE.run_q3d_cst(
+        res_light = MATLAB_Q3D_ENGINE.run_q3d_cst(
             self.right_wing.q3d_planform_geom,
             self.right_wing.q3d_cst_airfoils,
             self.right_wing.q3d_eta_airfoils,
@@ -467,48 +492,37 @@ class Glider(GeomBase):
             self.Q3D_params.mach_number,
             self.Q3D_params.reynolds_number,
             self.Q3D_params.velocity,
-            self.Q3D_params.alpha,
+            self.cl_cruise_light,
             self.Q3D_params.altitude,
             self.Q3D_params.density
         )
+        res_heavy = MATLAB_Q3D_ENGINE.run_q3d_cst(
+            self.right_wing.q3d_planform_geom,
+            self.right_wing.q3d_cst_airfoils,
+            self.right_wing.q3d_eta_airfoils,
+            matlab.double(self.right_wing.incidence_angle),
+            self.Q3D_params.mach_number,
+            self.Q3D_params.reynolds_number,
+            self.Q3D_params.velocity,
+            self.cl_cruise_heavy,
+            self.Q3D_params.altitude,
+            self.Q3D_params.density
+        )
+        self.q3d_res = [res_light, res_heavy]
 
     @Attribute
-    def q3d_wing_data(self):
+    def cruise_L_D_light(self) -> float:
         result = getattr(self, "q3d_res", None)
         if result is not None:
-            return convert_matlab_dict(result["Wing"])
+            return result[0]["CLwing"] / result[0]["CDwing"]
         else:
             return "Evaluate aerodynamics to view property"
 
     @Attribute
-    def q3d_section_data(self):
+    def cruise_L_D_heavy(self) -> float:
         result = getattr(self, "q3d_res", None)
         if result is not None:
-            return convert_matlab_dict(result["Section"])
-        else:
-            return "Evaluate aerodynamics to view property"
-
-    @Attribute
-    def wing_cl(self) -> float:
-        result = getattr(self, "q3d_res", None)
-        if result is not None:
-            return result["CLwing"]
-        else:
-            return "Evaluate aerodynamics to view property"
-
-    @Attribute
-    def wing_cd(self) -> float:
-        result = getattr(self, "q3d_res", None)
-        if result is not None:
-            return result["CDwing"]
-        else:
-            return "Evaluate aerodynamics to view property"
-
-    @Attribute
-    def wing_cm(self) -> float:
-        result = getattr(self, "q3d_res", None)
-        if result is not None:
-            return result["CMwing"]
+            return result[1]["CLwing"] / result[1]["CDwing"]
         else:
             return "Evaluate aerodynamics to view property"
         
