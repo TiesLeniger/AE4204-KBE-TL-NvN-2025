@@ -478,53 +478,54 @@ class Glider(GeomBase):
     def Q3D_params(self):
         return Q3DData(
             velocity = self.cruise_speed,
-            altitude = 1.0
+            altitude = 1.0,
+            mean_aerodynamic_chord = self.right_wing.mean_aerodynamic_chord
         )
 
     @action(label = "Run Q3D - speed polar")
     def q3d_data(self):
         """All inputs and results from running Q3D (MATLAB)"""
-        res_light = MATLAB_Q3D_ENGINE.run_q3d_cst(
+        self.q3d_res = MATLAB_Q3D_ENGINE.run_q3d_cst(
             self.right_wing.q3d_planform_geom,
             self.right_wing.q3d_cst_airfoils,
             self.right_wing.q3d_eta_airfoils,
             matlab.double(self.right_wing.incidence_angle),
-            self.Q3D_params.mach_number,
+            0.0,
             self.Q3D_params.reynolds_number,
             self.Q3D_params.velocity,
-            self.cl_cruise_light,
+            2.0,
             self.Q3D_params.altitude,
             self.Q3D_params.density
         )
-        res_heavy = MATLAB_Q3D_ENGINE.run_q3d_cst(
-            self.right_wing.q3d_planform_geom,
-            self.right_wing.q3d_cst_airfoils,
-            self.right_wing.q3d_eta_airfoils,
-            matlab.double(self.right_wing.incidence_angle),
-            self.Q3D_params.mach_number,
-            self.Q3D_params.reynolds_number,
-            self.Q3D_params.velocity,
-            self.cl_cruise_heavy,
-            self.Q3D_params.altitude,
-            self.Q3D_params.density
-        )
-        self.q3d_res = [res_light, res_heavy]
+        # res_heavy = MATLAB_Q3D_ENGINE.run_q3d_cst(
+        #     self.right_wing.q3d_planform_geom,
+        #     self.right_wing.q3d_cst_airfoils,
+        #     self.right_wing.q3d_eta_airfoils,
+        #     matlab.double(self.right_wing.incidence_angle),
+        #     0.0,
+        #     self.Q3D_params.reynolds_number,
+        #     self.Q3D_params.velocity,
+        #     self.cl_cruise_heavy,
+        #     self.Q3D_params.altitude,
+        #     self.Q3D_params.density
+        # )
+        # self.q3d_res = [res_light, res_heavy]
 
     @Attribute
     def cruise_L_D_light(self) -> float:
         result = getattr(self, "q3d_res", None)
         if result is not None:
-            return result[0]["CLwing"] / result[0]["CDwing"]
+            return result["CLwing"] / result["CDwing"]
         else:
             return "Evaluate aerodynamics to view property"
 
-    @Attribute
-    def cruise_L_D_heavy(self) -> float:
-        result = getattr(self, "q3d_res", None)
-        if result is not None:
-            return result[1]["CLwing"] / result[1]["CDwing"]
-        else:
-            return "Evaluate aerodynamics to view property"
+    # @Attribute
+    # def cruise_L_D_heavy(self) -> float:
+    #     result = getattr(self, "q3d_res", None)
+    #     if result is not None:
+    #         return result[1]["CLwing"] / result[1]["CDwing"]
+    #     else:
+    #         return "Evaluate aerodynamics to view property"
         
     @Attribute(in_tree = True)
     def avl_surfaces(self):
