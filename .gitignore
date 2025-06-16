@@ -180,5 +180,9 @@ parapy.lic
 # Tutorial files
 tutorials/
 
+# Output files
+output/*
+!output/.gitkeep
+
 # Q3D files
 src/glidesign/external/Q3D/Storage/
