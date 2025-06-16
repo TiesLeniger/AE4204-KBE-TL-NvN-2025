@@ -120,7 +120,7 @@ class Glider(GeomBase):
         if self.wing_span <= 18:
             return 2.6
         else:
-            return 3.0
+            return 3.2
     
     @Input
     def hor_tail_surface_area(self):
@@ -173,6 +173,12 @@ class Glider(GeomBase):
             return 800 #kg
         elif self.fai_class == "open class":
             return 850 #kg
+
+    @Attribute
+    def wing_water_volume(self):
+        #Assuming 1L water = 1kg
+        #Water sized such that pilot with minimum weight can reach MTOM
+        return self.max_to_mass - (self.glider_empty_mass + self.min_pilot_mass)
         
     @Attribute
     def cl_cruise(self):
