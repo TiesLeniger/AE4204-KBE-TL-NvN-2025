@@ -227,6 +227,21 @@ class LiftingSurface(LoftedSolid):
         else:
             tip_4c = self.profiles[-1].position.x + self.profiles[-1].chord/4
         return np.rad2deg(np.arctan((tip_4c - root_4c)/self.semi_span))
+    
+    @Attribute
+    def x_LEMAC(self):
+        for sec in self.sections:
+            if self.mean_aerodynamic_chord >= sec.root_chord and self.mean_aerodynamic_chord <= sec.tip_chord:
+                MAC_local_taper = self.mean_aerodynamic_chord / sec.root_chord
+                section_eta_MAC = MAC_local_taper / sec.taper_ratio
+                x_LEMAC = sec.tip_airfoil.position.x + (sec.tip_airfoil.position.x - sec.root_airfoil.position.x) * section_eta_MAC
+            else:
+                continue
+        return x_LEMAC
+    
+    @Attribute
+    def x_ac(self):
+        return self.x_LEMAC + 0.25 * self.mean_aerodynamic_chord
 
     @Part
     def frame(self):
