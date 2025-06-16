@@ -410,31 +410,28 @@ class Glider(GeomBase):
             wing_position = self.wing_position,
         )
 
-    @Attribute(in_tree = True)
+    @action(label = "Make scissor plots")
     def scissor_plot(self):
-        return ScissorPlot(
-            wing_x_location = self.wing_position[0], #Should technically be MAC position
-            actual_x_cog= self.glider_x_cog[0],
-            fwd_limit_x_cog= self.glider_x_cog[1],
-            bwd_limit_x_cog= self.glider_x_cog[2],
-            SM= self.SM,
-            x_ac= 0.25,
-            s= self.wing_surface_area,
+        scissorplot = ScissorPlot(
+            SM = self.SM,
+            actual_x_cog = self.glider_x_cog[0],
+            fwd_limit_x_cog = self.glider_x_cog[1],
+            bwd_limit_x_cog = self.glider_x_cog[2],
+            x_LEMAC = self.right_wing.x_LEMAC,
+            x_ac = 0.25,                                            # W.r.t mean aerodynamic chord
+            s = self.wing_surface_area,
             Sh_S = self.Sh_S,
-            l_h= self.hor_tail_length,
-            chord= self.right_wing.mean_aerodynamic_chord,
-            cm_ac=-0.05,
-            cl_a_min_h=0.7,
-            cl_h=-0.2,
-            cl_alpha_h=5,
-            cl_alpha_a_min_h=6,
-            wingspan = self.wing_span,
-            m_tv=abs(self.hor_tail_position[-1] - self.wing_position[-1]),
-            sweep_4c= np.deg2rad(self.right_wing.sweep_4c),
-            AR= self.wing_aspect_ratio,
-            hor_tail_span= self.hor_tail_span,
-            hor_tail_taper = self.hor_tail_taper
+            l_h = self.hor_tail_length,
+            mac = self.right_wing.mean_aerodynamic_chord,
+            cm_ac = self.cm_ac,
+            cl_a_min_h = CL_MAX_ESTIMATE,
+            cl_h = -0.35*self.hor_tail_aspect_ratio**(1/3),
+            cl_alpha_h = self.dcl_da_tail,
+            cl_alpha_a_min_h = self.dcl_da_wing,
+            Vh_V = 1
         )
+        scissorplot.plot_scissor_plot()
+    
     
     @action(label = "Size tail")
     def size_tail(self):
