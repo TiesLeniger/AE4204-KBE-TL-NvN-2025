@@ -1,6 +1,5 @@
 # Python native imports
-import warnings
-from wsgiref.validate import validator
+from pathlib import Path
 
 # Python third party imports
 import numpy as np
@@ -11,6 +10,7 @@ from parapy.geom import GeomBase, translate, rotate, MirroredShape, Point
 from parapy.core import Input, Attribute, Part, action, child
 from parapy.core.widgets import Dropdown
 from parapy.core.validate import OneOf, Range, GE, Validator, GreaterThan
+from parapy.exchange.step import STEPWriter
 import kbeutils.avl as avl
 
 # Custom imports
@@ -585,6 +585,11 @@ class Glider(GeomBase):
     def x_np(self):
         x_np = np.array([result['StabilityDerivatives']['Xnp'] for case_nr, result in self.avl_dcl_da_analysis.results.items()])
         return np.mean(x_np)
+    
+    @Part
+    def step_writer(self):
+        return STEPWriter(trees = [self],
+                          filename = Path.cwd() / "output" / "glider.stp")
 
 if __name__ == '__main__':
     from parapy.gui import display
