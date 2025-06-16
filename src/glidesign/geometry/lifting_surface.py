@@ -231,10 +231,10 @@ class LiftingSurface(LoftedSolid):
     @Attribute
     def x_LEMAC(self):
         for sec in self.sections:
-            if self.mean_aerodynamic_chord >= sec.root_chord and self.mean_aerodynamic_chord <= sec.tip_chord:
+            if self.mean_aerodynamic_chord <= sec.root_chord and self.mean_aerodynamic_chord >= sec.tip_chord:
                 MAC_local_taper = self.mean_aerodynamic_chord / sec.root_chord
-                section_eta_MAC = MAC_local_taper / sec.taper_ratio
-                x_LEMAC = sec.tip_airfoil.position.x + (sec.tip_airfoil.position.x - sec.root_airfoil.position.x) * section_eta_MAC
+                section_eta_MAC = sec.taper_ratio / MAC_local_taper
+                x_LEMAC = sec.root_airfoil.position.x + (sec.tip_airfoil.position.x - sec.root_airfoil.position.x) * section_eta_MAC
             else:
                 continue
         return x_LEMAC

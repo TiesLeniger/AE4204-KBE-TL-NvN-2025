@@ -7,7 +7,7 @@ import numpy as np
 import matlab
 
 # ParaPy imports
-from parapy.geom import GeomBase, translate, rotate, MirroredShape
+from parapy.geom import GeomBase, translate, rotate, MirroredShape, Point
 from parapy.core import Input, Attribute, Part, action, child
 from parapy.core.widgets import Dropdown
 from parapy.core.validate import OneOf, Range, GE, Validator, GreaterThan
@@ -515,7 +515,7 @@ class Glider(GeomBase):
                                  reference_area=self.wing_surface_area,
                                  reference_span=self.wing_span,
                                  reference_chord=self.right_wing.mean_aerodynamic_chord,
-                                 reference_point=self.position.point,
+                                 reference_point=Point(self.right_wing.x_ac, 0.0, 0.0),
                                  surfaces=self.avl_surfaces,
                                  mach= 0.0)
     
@@ -563,7 +563,12 @@ class Glider(GeomBase):
     def dcl_da_tail(self): # Check the convention, what area is used to normalise tail CL. Value seems low
         alpha_range = np.arange(0.0, 11.0, 1.0)
         cl_wing = np.array([result['SurfaceForces']['Horizontal tail']['CL'] for case_nr, result in self.avl_dcl_da_analysis.results.items()])
-        return np.rad2deg(np.mean(np.diff(cl_wing)/np.diff(alpha_range)))
+        return (1/self.Sh_S)*np.rad2deg(np.mean(np.diff(cl_wing)/np.diff(alpha_range)))
+    
+    @Attribute
+    def cm_ac(self):
+        cm_ac = np.array([result['SurfaceForces']['Main Wing']['Cm'] for case_nr, result in self.avl_dcl_da_analysis.results.items()])
+        return np.mean(cm_ac)
 
     @Attribute
     def full_aircraft_moment_coefficient(self):
