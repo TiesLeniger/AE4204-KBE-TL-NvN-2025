@@ -1,5 +1,4 @@
 # Glidesign
-===========
 
 Knowledge based engineering project repository of team 28 (Niels van Nieuwland and Ties Leniger).
 This project is a glider design application written in Python with ParaPy.
