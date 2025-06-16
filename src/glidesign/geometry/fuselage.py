@@ -128,14 +128,14 @@ class GliderFuselage(GeomBase):
                          'x', (self.xm - 0.08) * self.L,
                          'z', self.D)
 
-    @Part
+    @Attribute
     def canopy_ellipse(self):
         return Wire([Ellipse(position = self.canopy_position,
                             major_radius=self.wing_position[0] / 2,  # lengthwise (X-axis)
                            minor_radius=self.D)],
                     hidden = True)  # heightwise (Z-axis)
 
-    @Part
+    @Attribute
     def canopy_spheroid(self):
         return RevolvedSolid(center = self.canopy_position,
                                built_from =self.canopy_ellipse,
