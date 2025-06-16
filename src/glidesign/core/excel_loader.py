@@ -1,7 +1,7 @@
 import pandas as pd
-import os
+from pathlib import Path
 
-def load_glider_params(path: str) -> dict:
+def load_glider_params(filename: str) -> dict:
     """
     Loads glider parameters from an Excel file and stores them in a dictionary.
 
@@ -17,19 +17,17 @@ def load_glider_params(path: str) -> dict:
         print(params)
         # Output: {'span': 10.5, 'chord': 2.0, 'airfoil': 'NACA 0012', ...}
     """
+    if not Path(filename).suffix == ".xlsx":
+        filename += ".xlsx"
     # Construct the full path to the Excel file using the current working directory
-    excel_path = os.path.join(os.getcwd(), path)
+    excel_path = Path.cwd() / "input" / filename
 
     # Read the Excel file into a pandas DataFrame
-    df = pd.read_excel(excel_path)
+    df = pd.read_excel(excel_path, sheet_name="Input")
 
-    # Initialize an empty dictionary to store the parameters
-    param_dict = {}
+    parameter_list = df["Parameter"].to_list()
+    value_list = df["Value"].to_list()
 
-    # Iterate through each row in the DataFrame
-    for _, row in df.iterrows():
-        key = str(row[0]).strip()  # The first column represents the parameter name
-        value = row[1]  # The second column represents the value of the parameter
-        param_dict[key] = value  # Add the parameter and its value to the dictionary
+    param_dict = {key: value for key, value in zip(parameter_list, value_list)}
 
     return param_dict
