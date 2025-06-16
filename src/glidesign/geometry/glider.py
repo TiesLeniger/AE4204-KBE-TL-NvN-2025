@@ -20,7 +20,7 @@ from .fuselage import GliderFuselage
 from ..analysis import ScissorPlot
 from ..core import airfoil_found, convert_matlab_dict
 from ..external import MATLAB_Q3D_ENGINE, Q3DData
-from ..analysis import ScissorPlot, WeightAndBalance
+from ..analysis import ScissorPlot, WeightAndBalance, size_tail
 from ..core import airfoil_found, G0, RHO0
 
 # Constants
@@ -42,8 +42,8 @@ class Glider(GeomBase):
     cl_cr = Input(0.3, validator = GreaterThan(0.0))
 
     wing_taper: float = Input(0.4, validator = Range(0.0, 1.0, incl_min = False))
-    wing_pos_long: float = Input(0.3, validator = Range(0.0, 1.0))
-    wing_pos_vert: float = Input(0.2, validator = Range(0.0, 1.0))
+    wing_pos_long: float = Input(0.28, validator = Range(0.0, 1.0))
+    wing_pos_vert: float = Input(0.22, validator = Range(0.0, 1.0))
     wing_avl_n_chordwise = Input(12, validator = GreaterThan(0))                         # Vertical tail chordwise elements for avl
     wing_avl_n_spanwise = Input(24, validator = GreaterThan(0))                         # Vertical tail spanwise elements for avl
 
@@ -65,9 +65,9 @@ class Glider(GeomBase):
         return False if self.fai_class == "standard class" else True
 
     # Horizontal tail parameters
-    hor_tail_overhang: float = Input(0.1, validator = GreaterThan(0.0))                     # distance in x between LE of root of horizontal tail and LE of tip of vertical tail
+    hor_tail_overhang: float = Input(0.0, validator = GE(0.0))                              # distance in x between LE of root of horizontal tail and LE of tip of vertical tail
     Sh_S: float = Input(0.11, validator = Range(0.0, 1.0, incl_min=False))                  # Ratio of horizotal tail surface area to main wing surface area
-    hor_tail_taper: float = Input(0.45, validator=Range(0.1, 1.0))                          # Taper ratio
+    hor_tail_taper: float = Input(0.6, validator=Range(0.1, 1.0))                           # Taper ratio
     hor_tail_avl_n_chordwise = Input(8, validator = GreaterThan(0))                         # Vertical tail chordwise elements for avl
     hor_tail_avl_n_spanwise = Input(16, validator = GreaterThan(0))                         # Vertical tail spanwise elements for avl
 
@@ -89,10 +89,10 @@ class Glider(GeomBase):
         return (2*self.hor_tail_surface_area)/(self.hor_tail_span * (1 + self.hor_tail_taper))
 
     # Vertical tail parameters
-    ver_tail_aspect_ratio: float = Input(1.75, validator = Range(1.5, 2.0))                 # Vertical tail aspect ratio
-    ver_tail_volume: float = Input(0.06, validator = Range(0.045, 0.075))                   # Vertical tail volume
-    ver_tail_root_chord: float = Input(0.75, validator = GreaterThan(0.0))                  # Vertical tail root chord
-    ver_tail_sweep: float = Input(10.0, validator=Range(0.0, 20.0))                         # Leading edge sweep angle [deg]
+    ver_tail_aspect_ratio: float = Input(1.70, validator = Range(1.5, 2.0))                 # Vertical tail aspect ratio
+    ver_tail_volume: float = Input(0.065, validator = Range(0.045, 0.075))                  # Vertical tail volume
+    ver_tail_root_chord: float = Input(0.90, validator = GreaterThan(0.0))                  # Vertical tail root chord
+    ver_tail_sweep: float = Input(15.0, validator=Range(0.0, 20.0))                         # Leading edge sweep angle [deg]
     ver_tail_avl_n_chordwise = Input(8, validator = GreaterThan(0))                         # Vertical tail chordwise elements for avl
     ver_tail_avl_n_spanwise = Input(12, validator = GreaterThan(0))                         # Vertical tail spanwise elements for avl
 
@@ -247,12 +247,14 @@ class Glider(GeomBase):
     def hor_tail_position(self):
         return translate(rotate(self.vert_tail.profiles[-1].position, "x", -90, deg = True),
                          "x", -self.hor_tail_overhang)
+    
+    @Attribute
+    def hor_tail_aspect_ratio(self):
+        return 2*self.right_hor_tail.wing_half_aspect_ratio
    
     @Attribute
     def hor_tail_length(self):
-        quarter_chord_wing = 0.25 * self.right_wing.mean_aerodynamic_chord
-        quarter_chord_hor_tail = 0.25 * self.right_hor_tail.mean_aerodynamic_chord
-        return (self.hor_tail_position[0] + quarter_chord_hor_tail) - (self.wing_position[0] + quarter_chord_wing)
+        return self.right_hor_tail.x_ac - self.right_wing.x_ac
     
     # Vertical tail attributes
     @Attribute
@@ -262,9 +264,8 @@ class Glider(GeomBase):
     
     @Attribute
     def ver_tail_length(self):
-        quarter_chord_wing = 0.25 * self.right_wing.mean_aerodynamic_chord
         quarter_chord_tail = 0.25 * self.ver_tail_root_chord
-        return (self.ver_tail_position.point[0] + quarter_chord_tail) - (self.wing_position.point[0] + quarter_chord_wing)
+        return (self.ver_tail_position.x + quarter_chord_tail) - self.right_wing.x_ac
     
     @Attribute
     def dCLv_dBeta(self):
@@ -330,7 +331,7 @@ class Glider(GeomBase):
             taper = self.hor_tail_taper,
             span = self.hor_tail_span/2,
             twist = 0.0,                                        # Hard-coded default value to keep glider class as clean as possible, editable in GUI
-            sweep = 5.0,                                        # "
+            sweep = 10.0,                                        # "
             sweep_loc = 0.0,                                    # "
             dihedral = 0.0,                                     # "
             incidence_angle = 2.0,                              # "    
@@ -437,12 +438,22 @@ class Glider(GeomBase):
     
     @action(label = "Size tail")
     def size_tail(self):
-        self.scissor_plot.size_tail()
-        self.Sh_S = self.scissor_plot.Sh_S
-
-    @action(label = "Plot")
-    def plot_scissor_plot(self):
-        self.scissor_plot.plot_scissor_plot()
+        CL_h = -0.35*self.hor_tail_aspect_ratio**(1/3)
+        self.Sh_S = size_tail(
+            self.glider_x_cog[1], 
+            self.glider_x_cog[0],
+            self.glider_x_cog[2],
+            self.right_wing.mean_aerodynamic_chord,
+            self.right_wing.x_LEMAC,
+            self.x_np,
+            self.cm_ac,
+            CL_MAX_ESTIMATE,
+            self.dcl_da_tail,
+            self.dcl_da_wing,
+            CL_h,
+            1.0,
+            self.hor_tail_length
+            )
     
     @Part
     def Q3D_params(self):
@@ -569,6 +580,11 @@ class Glider(GeomBase):
     def cm_ac(self):
         cm_ac = np.array([result['SurfaceForces']['Main Wing']['Cm'] for case_nr, result in self.avl_Cm_ac_analysis.results.items()])
         return np.mean(cm_ac)
+    
+    @Attribute
+    def x_np(self):
+        x_np = np.array([result['StabilityDerivatives']['Xnp'] for case_nr, result in self.avl_dcl_da_analysis.results.items()])
+        return np.mean(x_np)
 
 if __name__ == '__main__':
     from parapy.gui import display
