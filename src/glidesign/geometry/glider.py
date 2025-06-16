@@ -147,13 +147,9 @@ class Glider(GeomBase):
             return 850 #kg
         
     @Attribute
-    def cl_cruise_light(self):
+    def cl_cruise(self):
         empty_plus_pilot = self.glider_empty_mass + self.current_pilot_mass
         return (empty_plus_pilot*G0)/(0.5*RHO0*self.cruise_speed**2*self.wing_surface_area)
-    
-    @Attribute
-    def cl_cruise_heavy(self):
-        return (self.max_to_mass*G0)/(0.5*RHO0*self.cruise_speed**2*self.wing_surface_area)
         
     @Attribute
     def glider_x_cog(self):
@@ -493,39 +489,30 @@ class Glider(GeomBase):
             0.0,
             self.Q3D_params.reynolds_number,
             self.Q3D_params.velocity,
-            2.0,
+            self.Q3D_params.alpha,
             self.Q3D_params.altitude,
             self.Q3D_params.density
         )
-        # res_heavy = MATLAB_Q3D_ENGINE.run_q3d_cst(
-        #     self.right_wing.q3d_planform_geom,
-        #     self.right_wing.q3d_cst_airfoils,
-        #     self.right_wing.q3d_eta_airfoils,
-        #     matlab.double(self.right_wing.incidence_angle),
-        #     0.0,
-        #     self.Q3D_params.reynolds_number,
-        #     self.Q3D_params.velocity,
-        #     self.cl_cruise_heavy,
-        #     self.Q3D_params.altitude,
-        #     self.Q3D_params.density
-        # )
-        # self.q3d_res = [res_light, res_heavy]
 
     @Attribute
-    def cruise_L_D_light(self) -> float:
+    def CL_wing(self) -> float:
         result = getattr(self, "q3d_res", None)
         if result is not None:
-            return result["CLwing"] / result["CDwing"]
+            return result["CLwing"]
+        else:
+            return "Evaluate aerodynamics to view property"
+        
+    @Attribute
+    def CD_wing(self) -> float:
+        result = getattr(self, "q3d_res", None)
+        if result is not None:
+            return result["CDwing"]
         else:
             return "Evaluate aerodynamics to view property"
 
-    # @Attribute
-    # def cruise_L_D_heavy(self) -> float:
-    #     result = getattr(self, "q3d_res", None)
-    #     if result is not None:
-    #         return result[1]["CLwing"] / result[1]["CDwing"]
-    #     else:
-    #         return "Evaluate aerodynamics to view property"
+    @Attribute
+    def cruise_L_D(self) -> float:
+        return self.CL_wing / self.CD_wing
         
     @Attribute(in_tree = True)
     def avl_surfaces(self):
